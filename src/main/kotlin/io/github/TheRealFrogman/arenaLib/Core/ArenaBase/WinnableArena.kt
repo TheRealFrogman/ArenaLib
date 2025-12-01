@@ -10,9 +10,9 @@ abstract class WinnableArena(
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
-    teams: MutableList<Team>,
+    teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin
-) : ArenaBase(name, region, spawnPoints, teams, plugin) {
+) : ArenaBase(name, region, spawnPoints, teamsInitializers, plugin) {
 
 //    protected fun declareWinners(potentialWinners: List<ArenaPlayer>) {
 //        val results = checkWinCondition(potentialWinners)
@@ -28,10 +28,10 @@ abstract class WinnableArena(
 //    }
 
     final override fun onFinish() {
-        this.winners += declareWinners()
+        winners += declareWinners()
 
         TODO("будто это смысла не имеет")
-        onWin(this, this.winners)
+        onWin(winners)
     }
 
     //todo сделать иммутабельный лист
@@ -41,5 +41,5 @@ abstract class WinnableArena(
 
 //    protected abstract fun checkWinCondition(probablyWinners: List<ArenaPlayer>): List<Boolean>
 
-    protected abstract fun onWin(arena: ArenaBase, winners: List<ArenaPlayer>)
+    protected abstract fun onWin(winners: List<ArenaPlayer>)
 }
