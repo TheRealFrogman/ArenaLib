@@ -1,7 +1,7 @@
 package io.github.TheRealFrogman.arenaLib.Integration.Listeners
 
-import io.github.TheRealFrogman.arenaLib.Arena.Core.ArenaPlayer.ArenaPlayer
-import io.github.TheRealFrogman.arenaLib.Arena.Core.ArenaPlayer.ArenaPlayerRepository
+import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
+import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayerRepository
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent

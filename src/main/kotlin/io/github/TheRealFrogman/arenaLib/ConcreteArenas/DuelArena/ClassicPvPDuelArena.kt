@@ -1,26 +1,23 @@
 package io.github.TheRealFrogman.arenaLib.ConcreteArenas.DuelArena
 
-import com.google.common.collect.ImmutableList
-import io.github.TheRealFrogman.arenaLib.Arena.Core.ArenaBase.ArenaBase
-import io.github.TheRealFrogman.arenaLib.Arena.Core.ArenaPlayer.ArenaPlayer
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Mandatory.ArenaRegion.ArenaRegion
-import io.github.TheRealFrogman.arenaLib.Arena.Core.ArenaBase.KillPlayerArena
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Mandatory.Round.Round
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Mandatory.Round.RoundManager
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Mandatory.SpawnPoint.SpawnPoint
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Optional.Scoreboard.Scoreboard
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Mandatory.SpawnPoint.SpawnPointManager
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Mandatory.Team.Team
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Components.Optional.Spectators.Spectators
-import io.github.TheRealFrogman.arenaLib.Arena.Core.Facets.ISessionedArena
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena
+import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Scoreboard
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators.Spectators
+import io.github.TheRealFrogman.arenaLib.Core.Facets.ISessionedArena
 import org.bukkit.plugin.java.JavaPlugin
 
 class ClassicPvPDuelArena (
     name: String,
     region: ArenaRegion,
+    spawnPoints: MutableList<SpawnPoint>,
     teams: MutableList<Team>,
     plugin: JavaPlugin,
-) : KillPlayerArena(name, region, teams, plugin), ISessionedArena {
+) : KillPlayerArena(name, region, spawnPoints, teams, plugin), ISessionedArena {
 
     //Optional components
     private val scoreboard = Scoreboard(this, { player: ArenaPlayer, score: Int -> 123})
@@ -29,10 +26,12 @@ class ClassicPvPDuelArena (
     override val maxPlayers = 2
     override val minPlayers = 2
 
-    private val playersPerTeam = 1
+    override val maxPlayersPerTeam = 1
+    override val minPlayersPerTeam = 1
 
     init {
-        require(teams.all { it.players.size == playersPerTeam} )
+        require(teams.all { it.players.size == minPlayersPerTeam} )
+        require(teams.all { it.players.size == maxPlayersPerTeam} )
     }
 
     override fun onBukkitKill(killer: ArenaPlayer, victim: ArenaPlayer) {
