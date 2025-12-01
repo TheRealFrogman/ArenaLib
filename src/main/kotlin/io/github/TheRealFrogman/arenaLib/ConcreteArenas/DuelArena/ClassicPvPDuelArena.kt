@@ -15,9 +15,9 @@ class ClassicPvPDuelArena (
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
-    teams: MutableList<Team>,
+    teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin,
-) : KillPlayerArena(name, region, spawnPoints, teams, plugin), ISessionedArena {
+) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, plugin), ISessionedArena {
 
     //Optional components
     private val scoreboard = Scoreboard(this, { player: ArenaPlayer, score: Int -> 123})
@@ -51,10 +51,7 @@ class ClassicPvPDuelArena (
 //        return leader.bukkitPlayerUniquieId == probablyWinner.bukkitPlayerUniquieId
 //    }
 
-    override fun onWin(
-        arena: ArenaBase,
-        winners: List<ArenaPlayer>
-    ) {
+    override fun onWin(winners: List<ArenaPlayer>) {
         TODO("Not yet implemented")
     }
 

@@ -16,11 +16,11 @@ abstract class ArenaBase(
     val name: String,
     val region: ArenaRegion,
     val spawnPoints: MutableList<SpawnPoint>,
-    val teams: MutableList<Team>,
+    val teamsInitializers: MutableList<Team.Initializer>,
     val plugin: JavaPlugin
 ) {
     val uuid = UUID.randomUUID()
-    val storeId get() = name + "_" + whenStarted + "_" + whenFinished
+    val id get() = name + "_" + whenStarted + "_" + whenFinished
     var whenStarted: Long = 0
         private set
     var whenFinished: Long = 0
@@ -29,23 +29,20 @@ abstract class ArenaBase(
     abstract val maxPlayersPerTeam: Int
     abstract val minPlayersPerTeam: Int
 
-    val players = teams.flatMap { it.players }.distinct().toMutableSet()
+    val players = teamsInitializers.flatMap { it.players }.distinct().toMutableSet()
+    val teams = teamsInitializers.map { Team(this, it) }
 
     //todo спавн поинты надо в конструктор передавать наверно
 //    abstract val spawnPoints: MutableList<SpawnPoint>
-
-    //todo раунды буду создавать в менеджере раундов
-//    abstract val rounds: ImmutableList<Round>
 
     //mandatory components
     protected var spawnPointManager = SpawnPointManager(this, spawnPoints)
     protected var roundManager = RoundManager(this)
 
     init {
-        check(teams.isNotEmpty()) { "Teams should not be empty" }
-        check(teams.all { it.players.size >= minPlayersPerTeam }) { "Not enough players in teams" }
-        check(teams.all { it.players.size <= maxPlayersPerTeam }) { "Too many players in teams" }
-//        check(rounds.isNotEmpty()) { "Rounds should not be empty" }
+        check(teamsInitializers.isNotEmpty()) { "Teams should not be empty" }
+        check(teamsInitializers.all { it.players.size >= minPlayersPerTeam }) { "Not enough players in teams" }
+        check(teamsInitializers.all { it.players.size <= maxPlayersPerTeam }) { "Too many players in teams" }
         check(spawnPoints.isNotEmpty()) { "SpawnPoints should not be empty" }
     }
 
