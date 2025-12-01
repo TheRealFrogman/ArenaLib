@@ -15,9 +15,9 @@ abstract class KillPlayerArena(
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
-    teams: MutableList<Team>,
+    teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin,
-) : WinnableArena(name, region, spawnPoints,teams, plugin) {
+) : WinnableArena(name, region, spawnPoints, teamsInitializers, plugin) {
 
     private val eventHook: Listener = object : Listener {
 

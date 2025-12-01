@@ -1,10 +1,13 @@
 package io.github.TheRealFrogman.arenaLibrary.Arena.ConcreteArenas.DeathmatchArena
 
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
 import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Scoreboard
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
+import io.github.TheRealFrogman.arenaLib.Core.Facets.ICasualArena
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.*
 
@@ -15,10 +18,9 @@ class DeathmatchArena internal constructor(
     override val maxPlayers: Int,
     override val minPlayersPerTeam: Int,
     override val maxPlayersPerTeam: Int,
-    teams: MutableList<io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team>,
+    teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin,
-) : io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena(name, region, spawnPoints, teams, plugin),
-    io.github.TheRealFrogman.arenaLib.Core.Facets.ICasualArena {
+) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, plugin), ICasualArena {
 
     //Optional components
     private val scoreboard =
@@ -51,10 +53,7 @@ class DeathmatchArena internal constructor(
 //        return leader.bukkitPlayerUniquieId == probablyWinner.bukkitPlayerUniquieId
 //    }
 
-    override fun onWin(
-        arena: ArenaBase,
-        winners: List<ArenaPlayer>
-    ) {
+    override fun onWin(winners: List<ArenaPlayer>) {
 
         TODO("перевести игроков в спектаторы и через время" +
                 "телепортировать игрока туда, где он был. " +
