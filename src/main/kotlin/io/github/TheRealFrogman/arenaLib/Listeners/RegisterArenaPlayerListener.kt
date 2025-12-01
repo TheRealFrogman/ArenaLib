@@ -1,7 +1,7 @@
-package io.github.TheRealFrogman.arenaLib.Integration.Listeners
+package io.github.TheRealFrogman.arenaLib.Listeners
 
+import io.github.TheRealFrogman.arenaLib.ArenaLib
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
-import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayerRepository
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
@@ -13,7 +13,8 @@ class RegisterArenaPlayerListener(plugin: JavaPlugin) : Listener {
         plugin.server.pluginManager.registerEvents(this, plugin)
     }
 
-    val arenaPlayerRepository = ArenaPlayerRepository()
+
+    val arenaPlayerRepository = ArenaLib.context.arenaPlayerRepository
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
