@@ -1,0 +1,6 @@
+name: ArenaLib
+version: '1.0-SNAPSHOT'
+main: io.github.TheRealFrogman.arenaLib.ArenaLib
+author: TheRealFrogman
+api-version: '1.21.8'
+depend: [WorldEdit]
