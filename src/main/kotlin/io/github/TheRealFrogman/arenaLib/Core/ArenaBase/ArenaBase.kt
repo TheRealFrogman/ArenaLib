@@ -20,7 +20,14 @@ abstract class ArenaBase(
     val plugin: JavaPlugin
 ) {
     val uuid = UUID.randomUUID()
-    val id get() = name + "_" + whenStarted + "_" + whenFinished
+    val id: String get() {
+        if (whenStarted == 0L)
+            throw IllegalStateException("Arena not started")
+        if (whenFinished == 0L)
+            throw IllegalStateException("Arena not finished")
+
+        return name + "_" + whenStarted + "_" + whenFinished
+    }
     var whenStarted: Long = 0
         private set
     var whenFinished: Long = 0
@@ -32,18 +39,23 @@ abstract class ArenaBase(
     val players = teamsInitializers.flatMap { it.players }.distinct().toMutableSet()
     val teams = teamsInitializers.map { Team(this, it) }
 
-    //todo спавн поинты надо в конструктор передавать наверно
-//    abstract val spawnPoints: MutableList<SpawnPoint>
-
     //mandatory components
     protected var spawnPointManager = SpawnPointManager(this, spawnPoints)
     protected var roundManager = RoundManager(this)
 
     init {
-        check(teamsInitializers.isNotEmpty()) { "Teams should not be empty" }
-        check(teamsInitializers.all { it.players.size >= minPlayersPerTeam }) { "Not enough players in teams" }
-        check(teamsInitializers.all { it.players.size <= maxPlayersPerTeam }) { "Too many players in teams" }
+        check(teams.isNotEmpty()) { "Teams should not be empty" }
+        check(teams.all { it.players.size >= minPlayersPerTeam }) { "Not enough players in teams" }
+        check(teams.all { it.players.size <= maxPlayersPerTeam }) { "Too many players in teams" }
+
         check(spawnPoints.isNotEmpty()) { "SpawnPoints should not be empty" }
+
+        check(this.players.size > maxPlayers) { "Too many players in arena" }
+        check(this.players.size < minPlayers) { "Not enough players in arena" }
+
+        check(this.isPlayersEnough) { "Not enough players to start" }
+
+        this.players.forEach(Consumer { player: ArenaPlayer -> player.setCurrentArena(this) })
     }
 
     enum class ArenaState {
@@ -54,18 +66,9 @@ abstract class ArenaBase(
 
     private var state = ArenaState.READY
 
-    init {
-        check(this.players.size > maxPlayers) { "Too many players in arena" }
-        check(this.players.size < minPlayers) { "Not enough players in arena" }
-        this.players.forEach(Consumer { player: ArenaPlayer? -> player!!.setCurrentArena(this) })
-    }
-
     fun start() {
         try {
             check(state == ArenaState.READY) { "Arena should be ready" }
-            checkNotNull(region) { "Arena should have a region" }
-
-            check(this.isPlayersEnough) { "Not enough players to start" }
 
             state = ArenaState.RUNNING
             whenStarted = System.currentTimeMillis()
@@ -104,10 +107,8 @@ abstract class ArenaBase(
     abstract val minPlayers: Int
     abstract val maxPlayers: Int
 
-    fun isPlayerInList(p: ArenaPlayer): Boolean {
-        return this.players.stream()
-            .anyMatch { player: ArenaPlayer -> player.bukkitPlayerUniquieId == p.bukkitPlayerUniquieId }
-    }
+    fun isPlayerInArena(p: ArenaPlayer) = this.players.stream()
+            .anyMatch { it.bukkitPlayerUniquieId == p.bukkitPlayerUniquieId }
 
     open fun leave(arenaPlayer: ArenaPlayer) {
         this.players.remove(arenaPlayer)
