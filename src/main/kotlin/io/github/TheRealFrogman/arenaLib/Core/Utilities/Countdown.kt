@@ -5,6 +5,7 @@ import org.bukkit.scheduler.BukkitRunnable
 
 class Countdown(
     private val plugin: JavaPlugin,
+    var countdownTime: Int,
     private val onTimerDepleted: OnTimerDepleted,
     private val onTimerRunExceptWhenDepleted: OnTimerRunExceptWhenDepleted
 ) {
@@ -14,7 +15,7 @@ class Countdown(
     }
 
     fun interface OnTimerRunExceptWhenDepleted {
-        fun execute(сurrentTimer: Int)
+        fun execute(currentTimer: Int)
     }
 
     private val task: BukkitRunnable = object : BukkitRunnable() {
@@ -22,7 +23,7 @@ class Countdown(
             elapsed++
 
             if (remaining == 0) {
-                this.cancel()
+                stopCountdown()
                 onTimerDepleted.execute()
             } else {
                 onTimerRunExceptWhenDepleted.execute(remaining)
@@ -30,31 +31,38 @@ class Countdown(
         }
     }
 
-    var elapsed: Int = 0
-        private set
+    var elapsed = 0
 
-    var countdownTime: Int = 0
+    fun reset() {
+        elapsed = 0
+    }
 
     val remaining: Int
-        get() = countdownTime - elapsed
+        get() {
+            val product = countdownTime - elapsed
 
-    fun resetElapsed(): Int {
-        return 0.also { elapsed = it }
-    }
+            return if (product < 0) {
+                0
+            } else
+                product
+        }
 
     var isRunning: Boolean = false
         private set
 
     fun startCountdown() {
+        if (this.isRunning)
+            return
         //run every second
         task.runTaskTimer(plugin, 0, 20)
-//        this.updateCountdownTime()
         this.isRunning = true
     }
 
     fun stopCountdown() {
+        if (this.isRunning == false)
+            return
+
         task.cancel()
-//        this.updateCountdownTime()
         this.isRunning = false
     }
 }
