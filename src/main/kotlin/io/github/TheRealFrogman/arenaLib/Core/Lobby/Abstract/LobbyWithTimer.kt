@@ -4,39 +4,54 @@ import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.Utilities.Countdown
 import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.scheduler.BukkitRunnable
-import kotlin.text.get
 
 abstract class LobbyWithTimer(
     arena: ArenaBase,
     minPlayers: Int,
     maxPlayers: Int,
     private val minPlayersToStart: Int,
-    private val playerCountToSeconds: MutableMap<Int, Int>,
+    private val playerCountToSeconds: MutableList<PlayerCountToSeconds>,
     plugin: JavaPlugin,
 ) : Lobby(arena, minPlayers, maxPlayers, plugin) {
 
+    interface PlayerCountToSeconds {
+        val playerCount: Int
+        val seconds: Int
+    }
+
     init {
         require(playerCountToSeconds.isNotEmpty())
-        require(playerCountToSeconds.entries.first().key >= minPlayersToStart)
-        require(playerCountToSeconds.entries.first().value >= 1)
-        require(playerCountToSeconds.entries.last().key <= maxPlayers)
+        require(playerCountToSeconds.first().playerCount >= minPlayersToStart)
+        require(playerCountToSeconds.first().seconds >= 1)
+        require(playerCountToSeconds.last().playerCount <= maxPlayers)
     }
 
     private val countdown = Countdown(
         plugin,
+        0,
         ::onTimerDepleted,
         ::onTimerRunExceptWhenDepleted
     )
 
     override fun onJoinHook(player: ArenaPlayer) {
         if (players.size >= minPlayersToStart) {
-            if (!countdown.isRunning) 
+            if (!countdown.isRunning) {
                 countdown.startCountdown()
+            }
 
-            val seconds: Int = playerCountToSeconds[players.size]!!
-
-            countdown.countdownTime = seconds - countdown.elapsed
+            val newTime = getMappedCountdownTime()
+            if (countdown.countdownTime != newTime) {
+                countdown.countdownTime = newTime
+                // если смена успешна — ресетим
+                countdown.reset()
+            }
+        } else {
+            // если ещё не достигли минимума, всё равно обновим время, но не стартуем
+            val newTime = getMappedCountdownTime()
+            if (countdown.countdownTime != newTime) {
+                countdown.countdownTime = newTime
+                countdown.reset()
+            }
         }
     }
 
@@ -44,14 +59,25 @@ abstract class LobbyWithTimer(
         // If player count drops below minimum, stop the countdown
         if (players.size < minPlayersToStart) {
             countdown.stopCountdown()
-            countdown.resetElapsed()
+            countdown.reset()
         }
 
-        val seconds: Int = playerCountToSeconds[players.size]!!
-
-        countdown.countdownTime = seconds - countdown.elapsed
+        val newTime = getMappedCountdownTime()
+        if (countdown.countdownTime != newTime) {
+            countdown.countdownTime = newTime
+            // если смена успешна — ресетим
+            countdown.reset()
+        }
     }
 
     abstract fun onTimerRunExceptWhenDepleted(сurrentTimer: Int)
     abstract fun onTimerDepleted()
+
+    private fun getMappedCountdownTime(): Int {
+        return playerCountToSeconds
+            .filter { it.playerCount <= players.size }
+            .maxByOrNull { it.playerCount }
+            ?.seconds
+            ?: 0
+    }
 }

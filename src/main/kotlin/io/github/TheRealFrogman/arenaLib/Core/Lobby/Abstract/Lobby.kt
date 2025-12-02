@@ -3,7 +3,6 @@ package io.github.TheRealFrogman.arenaLib.Core.Lobby.Abstract
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
-import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 
 abstract class Lobby(
