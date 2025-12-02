@@ -2,13 +2,16 @@ package io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer
 
 import com.google.common.collect.ImmutableMap
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
 class ArenaPlayer(private val bukkitPlayer: Player) {
+
     val bukkitPlayerUniquieId: UUID = bukkitPlayer.getUniqueId()
+
     private var currentArena: ArenaBase? = null
     fun setCurrentArena(currentArena: ArenaBase?) {
         this.currentArena = currentArena
@@ -30,7 +33,7 @@ class ArenaPlayer(private val bukkitPlayer: Player) {
         TODO("сделать бэкап в файл")
     }
 
-    private fun deleteBackup() {
+    private fun deleteBackupLocation() {
         teleportBackup = null
         TODO("удалить бэкап из файла")
     }
@@ -40,9 +43,20 @@ class ArenaPlayer(private val bukkitPlayer: Player) {
             return false
 
         bukkitPlayer.teleport(teleportBackup!!)
-        deleteBackup()
+        deleteBackupLocation()
 
         return true
+    }
+
+    var gamemodeBackup: GameMode? = null
+    fun changeGamemodeWithBackup(gamemode: GameMode) {
+        gamemodeBackup = bukkitPlayer.gameMode
+        bukkitPlayer.gameMode = gamemode
+    }
+
+    fun restoreGamemode() {
+        if (gamemodeBackup != null)
+            bukkitPlayer.gameMode = gamemodeBackup!!
     }
 
     val inventorySnapshot: Nothing = TODO("делать снапшот инвентаря")
