@@ -1,5 +1,6 @@
 package io.github.TheRealFrogman.arenaLib.Core.ArenaBase
 
+import io.github.TheRealFrogman.arenaLib.ArenaLib
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayerRepository
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
@@ -55,7 +56,7 @@ abstract class KillPlayerArena(
 
     protected abstract fun onBukkitKill(killer: ArenaPlayer, victim: ArenaPlayer)
 
-    private val arenaPlayerRepository = ArenaPlayerRepository()
+    private val arenaPlayerRepository = ArenaLib.context.arenaPlayerRepository
 
     init {
         plugin.getServer()
