@@ -8,36 +8,36 @@ import java.util.HashMap
 import java.util.Map
 //todo сделать из скорборда фасад который скрывает Solo и Team скорборды и все
 //todo также сделать интерфейс
-class Scoreboard(
+class PlayerScoreboard(
     arena: ArenaBase,
     private val onScoreChanged: OnScoreChanged
-) : ArenaComponent(arena) {
+) : ArenaComponent(arena), IScoreboard<ArenaPlayer> {
 
     fun interface OnScoreChanged {
-        fun execute(player: ArenaPlayer, score: Int)
+        fun execute(player: ArenaPlayer, score: Long)
     }
 
-    private val scoreboard: MutableMap<ArenaPlayer, Int> = HashMap()
+    private val scoreboard: MutableMap<ArenaPlayer, Long> = HashMap()
 
-    fun addScore(player: ArenaPlayer, amount: Int) {
+    override fun addScore(player: ArenaPlayer, amount: Long) {
         scoreboard.put(player, scoreboard.get(player)!! + amount)
         onScoreChanged.execute(player, scoreboard.get(player)!!)
     }
 
-    fun setScore(player: ArenaPlayer, score: Int) {
+    override fun setScore(player: ArenaPlayer, score: Long) {
         scoreboard.put(player, score)
         onScoreChanged.execute(player, score)
     }
 
-    fun getScore(player: ArenaPlayer): Int = this.scoreboard.get(player)!!
+    override fun getScore(player: ArenaPlayer): Long = this.scoreboard.get(player)!!
 
-    val leader: ArenaPlayer?
-        get() = Collections.max<MutableMap.MutableEntry<ArenaPlayer, Int>?>(
+    override val leader: ArenaPlayer?
+        get() = Collections.max<MutableMap.MutableEntry<ArenaPlayer, Long>?>(
             scoreboard.entries,
-            Map.Entry.comparingByValue<ArenaPlayer, Int?>()
-        ).key
+            Map.Entry.comparingByValue<ArenaPlayer, Long?>()
+        )?.key
 
-    fun getFirstLeading(amount: Int): List<ArenaPlayer> {
+    override fun getFirstLeading(amount: Long): List<ArenaPlayer> {
         val result = ArrayList<ArenaPlayer>()
 
         val it = scoreboard.entries.iterator()
@@ -48,5 +48,12 @@ class Scoreboard(
         }
 
         return result
+    }
+
+    override fun getAllSortedByScore(): MutableMap<ArenaPlayer, Long> {
+        return scoreboard.entries
+            .sortedByDescending { it.value }
+            .associate { it.key to it.value }
+            .toMutableMap()
     }
 }
