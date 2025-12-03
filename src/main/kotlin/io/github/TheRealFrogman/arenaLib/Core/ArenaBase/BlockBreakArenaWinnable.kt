@@ -12,21 +12,21 @@ import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.plugin.java.JavaPlugin
 
-abstract class BlockBreakArena(
+abstract class BlockBreakArenaWinnable(
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
     teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin,
-) : ArenaBase(name, region, spawnPoints, teamsInitializers, plugin) {
+) : WinnableArena(name, region, spawnPoints, teamsInitializers, plugin) {
 
-    val arenaPlayerRepository = ArenaLib.context.arenaPlayerRepository
+    val pluginContext = ArenaLib.context
 
     val eventHook = object : Listener {
 
         @EventHandler
         private fun onBlockBreak(event: BlockBreakEvent) {
-            val maybeArenaPlayer = arenaPlayerRepository.getArenaPlayer(event.player.uniqueId)
+            val maybeArenaPlayer = pluginContext.arenaPlayerRepository.getArenaPlayer(event.player.uniqueId)
             if (maybeArenaPlayer == null)
                 return
 

@@ -6,11 +6,16 @@ import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
 
 class Team(
     arena: ArenaBase,
-    players: MutableList<ArenaPlayer>,
+    initializer: Initializer,
 ) : ArenaComponent(arena) {
 
-    var players: MutableList<ArenaPlayer> = players
-        private set
+    companion object {
 
+    }
+
+    class Initializer(val players: MutableList<ArenaPlayer>)
+
+    var players: MutableList<ArenaPlayer> = initializer.players
+        private set
 
 }

@@ -14,32 +14,16 @@ abstract class WinnableArena(
     plugin: JavaPlugin
 ) : ArenaBase(name, region, spawnPoints, teamsInitializers, plugin) {
 
-//    protected fun declareWinners(potentialWinners: List<ArenaPlayer>) {
-//        val results = checkWinCondition(potentialWinners)
-//        require(results.all { it } ) { "condition not met" }
-//        check(winners.isNotEmpty()) { "winners already set" }
-//
-//        this.winners += potentialWinners
-//        onWin(this, potentialWinners)
-//
-//        // declareWinners само по себе означает что арена закрыта
-//        // поэтому закрываем арену
-//        super.finish()
-//    }
-
-    final override fun onFinish() {
+    override fun onFinish() {
         winners += declareWinners()
 
         TODO("будто это смысла не имеет")
         onWin(winners)
     }
 
-    //todo сделать иммутабельный лист
-    private  var winners: List<ArenaPlayer> = ArrayList()
+    private  var winners: MutableList<ArenaPlayer> = ArrayList()
 
-    abstract fun declareWinners(): List<ArenaPlayer>
-
-//    protected abstract fun checkWinCondition(probablyWinners: List<ArenaPlayer>): List<Boolean>
+    protected abstract fun declareWinners(): List<ArenaPlayer>
 
     protected abstract fun onWin(winners: List<ArenaPlayer>)
 }

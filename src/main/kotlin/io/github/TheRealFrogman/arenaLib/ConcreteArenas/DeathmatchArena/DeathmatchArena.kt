@@ -1,10 +1,9 @@
 package io.github.TheRealFrogman.arenaLibrary.Arena.ConcreteArenas.DeathmatchArena
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
-import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Scoreboard
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.PlayerScoreboard
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
 import io.github.TheRealFrogman.arenaLib.Core.Facets.ICasualArena
@@ -23,14 +22,13 @@ class DeathmatchArena internal constructor(
 ) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, plugin), ICasualArena {
 
     //Optional components
-    private val scoreboard =
-        _root_ide_package_.io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Scoreboard(
+    private val scoreboard = PlayerScoreboard(
             this,
-            { player: io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer, score: Int -> 123 })
+            { player: ArenaPlayer, score: Long -> 123 })
 
     override val minPlayers = 2
 
-    override fun onBukkitKill(killer: io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer, victim: io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer) {
+    override fun onBukkitKill(killer: ArenaPlayer, victim: ArenaPlayer) {
         scoreboard.addScore(killer, 1)
 
         val copySpawnpoints: MutableList<SpawnPoint?> = ArrayList<SpawnPoint?>(spawnPointManager.getSpawns())

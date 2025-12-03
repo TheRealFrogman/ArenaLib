@@ -25,7 +25,7 @@ class ClassicPvPDuelArena (
     override val minPlayersPerTeam = 1
 
     //Optional components
-    private val scoreboard = PlayerScoreboard(this, { player: ArenaPlayer, score: Int -> 123})
+    private val scoreboard = PlayerScoreboard(this, { player: ArenaPlayer, score: Long -> 123})
     private val spectators = Spectators(this,  {}, {})
 
     override fun onBukkitKill(killer: ArenaPlayer, victim: ArenaPlayer) {

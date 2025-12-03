@@ -11,7 +11,7 @@ class LobbyWithTimerAndTeleportLocation(
     minPlayers: Int,
     maxPlayers: Int,
     minPlayersToStart: Int,
-    playerCountToSeconds: MutableMap<Int, Int>,
+    playerCountToSeconds: MutableList<PlayerCountToSeconds>,
     private val teleportLocation: Location,
     private val _onTimerRunExceptWhenDepleted: OnTimerRunExceptWhenDepleted,
     private val _onTimerDepleted: OnTimerDepleted,

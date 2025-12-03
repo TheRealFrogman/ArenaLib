@@ -9,7 +9,7 @@ class LobbyWithTimerWithoutTeleportLocation(
     minPlayers: Int,
     maxPlayers: Int,
     minPlayersToStart: Int,
-    playerCountToSeconds: MutableMap<Int, Int>,
+    playerCountToSeconds: MutableList<PlayerCountToSeconds>,
     private val _onTimerRunExceptWhenDepleted: OnTimerRunExceptWhenDepleted,
     private val _onTimerDepleted: OnTimerDepleted,
     plugin: JavaPlugin,
