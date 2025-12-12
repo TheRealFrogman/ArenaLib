@@ -7,6 +7,14 @@ import java.util.UUID
 
 abstract class Round(
     arena: ArenaBase,
+    val prepareTime: Long,
+    val roundTime: Long,
+    val downtimeTime: Long,
+    val prePauseTime: Long,
+    val pauseTime: Long,
+    val postPauseTime: Long,
+    private val isTimeoutAllowed: Boolean,
+    private val isPauseAllowed: Boolean,
     private val canTimeoutWhenRunning: Boolean,
 ) : ArenaComponent(arena) {
 
@@ -26,7 +34,11 @@ abstract class Round(
     abstract fun onUnpause()
 
     var state: State = State.READY
-        private set
+        private set(value) {
+            val old = field
+            field = value
+            onStateChange(old, value)
+        }
 
     enum class State {
         READY,
@@ -62,14 +74,12 @@ abstract class Round(
     var postPauseCountdown: Countdown? = null
     var downtimeCountdown: Countdown? = null
 
-    private fun runDuringRoundCountdown(roundTime: Long, downtimeTime: Long, onCountdownDepleted: () -> Unit = {}) {
+    private fun runDuringRoundPhase(roundTime: Long, onCountdownDepleted: () -> Unit) {
+        this.state = State.RUNNING
+
         duringRoundCountdown = Countdown(
             roundTime,
-            {
-                runDowntimeCountdown(downtimeTime)
-                this.state = State.DOWNTIME
-                onDowntime()
-            },
+            onCountdownDepleted,
             ::onDuringRoundTick,
             {},
             {},
@@ -78,15 +88,12 @@ abstract class Round(
         duringRoundCountdown!!.start()
     }
 
-    private fun runPrepareCountdown(prepareTime: Long, roundTime: Long, downtimeTime: Long) {
+    private fun runPreparePhase(prepareTime: Long, onCountdownDepleted: () -> Unit) {
+        this.state = State.PREPARING
+
         prepareCountdown = Countdown(
             prepareTime,
-            {
-                runDuringRoundCountdown(roundTime, downtimeTime)
-                this.state = State.RUNNING
-                this.whenStarted = System.currentTimeMillis()
-                onStart()
-            },
+            onCountdownDepleted,
             ::onPrepareTick,
             {},
             {},
@@ -95,14 +102,12 @@ abstract class Round(
         prepareCountdown!!.start()
     }
 
-    fun runPauseCountdown(pauseTime: Long, postPauseTime: Long) {
+    private fun runPausePhase(pauseTime: Long, onCountdownDepleted: () -> Unit) {
+        this.state = State.PAUSED
+
         pauseCountdown = Countdown(
             pauseTime,
-            {
-                runPostPauseCountdown(postPauseTime)
-                this.state = State.POST_PAUSE
-                onPostPause()
-            },
+            onCountdownDepleted,
             ::onDuringPauseTick,
             {},
             {},
@@ -111,14 +116,12 @@ abstract class Round(
         pauseCountdown!!.start()
     }
 
-    fun runPrePauseCountdown(prePauseTime: Long, pauseTime: Long, postPauseTime: Long) {
+    private fun runPrePausePhase(prePauseTime: Long, onCountdownDepleted: () -> Unit) {
+        this.state = State.PRE_PAUSE
+
         prePauseCountdown = Countdown(
             prePauseTime,
-            {
-                runPauseCountdown(pauseTime, postPauseTime)
-                this.state = State.PAUSED
-                onPause()
-            },
+            onCountdownDepleted,
             ::onPrePauseTick,
             {},
             {},
@@ -127,14 +130,12 @@ abstract class Round(
         prePauseCountdown!!.start()
     }
 
-    fun runPostPauseCountdown(postPauseTime: Long) {
+    private fun runPostPausePhase(postPauseTime: Long, onCountdownDepleted: () -> Unit) {
+        this.state = State.POST_PAUSE
+
         postPauseCountdown = Countdown(
             postPauseTime,
-            {
-                duringRoundCountdown?.resume()
-                this.state = State.RUNNING
-                onUnpause()
-            },
+            onCountdownDepleted,
             ::onPostPauseTick,
             {},
             {},
@@ -143,16 +144,12 @@ abstract class Round(
         postPauseCountdown!!.start()
     }
 
-    fun runDowntimeCountdown(downtimeTime: Long) {
+    private fun runDowntimePhase(downtimeTime: Long, onCountdownDepleted: () -> Unit) {
+        this.state = State.DOWNTIME
+
         downtimeCountdown = Countdown(
             downtimeTime,
-            {
-                this.state = State.FINISHED
-                this.whenFinished = System.currentTimeMillis()
-
-                onFinish()
-                cancelAllTimers()
-            },
+            onCountdownDepleted,
             ::onDowntimeTick,
             {},
             {},
@@ -161,13 +158,112 @@ abstract class Round(
         downtimeCountdown!!.start()
     }
 
-    fun start(prepareTime: Long, roundTime: Long, downtimeTime: Long) {
+    private fun setFinished() {
+        this.state = State.FINISHED
+    }
+
+    private fun setRunning() {
+        this.state = State.RUNNING
+    }
+
+    private fun onStateChange (oldState: State, newState: State) {
+        when (newState) {
+            State.PREPARING -> {
+                when(oldState) {
+                    State.PAUSED -> {
+                        if (prepareCountdown?.isPaused == true)
+                            prepareCountdown?.resume()
+                    }
+                    else -> throw IllegalStateException("Unhandled state: $oldState")
+                }
+                onPrepare()
+            }
+
+            State.RUNNING -> {
+                when(oldState) {
+                    State.PREPARING -> {
+                        this.whenStarted = System.currentTimeMillis()
+                        onStart()
+                    }
+                    State.POST_PAUSE -> {
+
+                        if (duringRoundCountdown?.isPaused == true)
+                            duringRoundCountdown?.resume()
+
+                        if (prepareCountdown?.isPaused == true)
+                            prepareCountdown?.resume()
+
+                        onUnpause()
+                    }
+                    State.PAUSED -> {
+
+                    }
+                    State.DOWNTIME -> {
+
+                    }
+                    else -> throw IllegalStateException("Unhandled state: $oldState")
+                }
+            }
+            State.PRE_PAUSE -> {
+                when(oldState) {
+                    State.RUNNING -> {
+                        duringRoundCountdown?.pause()
+                    }
+
+                    State.DOWNTIME -> {
+                        TODO("как-то сделать перенос паузы")
+                    }
+                    else -> throw IllegalStateException("Unhandled state: $oldState")
+                }
+                onPrePause()
+            }
+
+            State.PAUSED -> {
+                when(oldState) {
+                    State.PREPARING -> {
+                        prepareCountdown?.reset()
+                        prepareCountdown?.pause()
+                    }
+                    State.RUNNING -> {
+                        duringRoundCountdown?.pause()
+                    }
+                    State.DOWNTIME -> {
+                        TODO("как-то сделать перенос паузы")
+                    }
+                    else -> throw IllegalStateException("Unhandled state: $oldState")
+                }
+                onPause()
+            }
+
+            State.POST_PAUSE -> {
+                if (duringRoundCountdown?.isPaused == true)
+                    duringRoundCountdown?.resume()
+
+                onPostPause()
+            }
+
+            State.DOWNTIME -> onDowntime()
+
+            State.FINISHED -> {
+                this.whenFinished = System.currentTimeMillis()
+                onFinish()
+                cancelAllTimers()
+            }
+            else -> throw IllegalStateException("Unknown state: $newState")
+        }
+    }
+
+    fun start() {
         if (!canStart)
             throw IllegalStateException("Can't start")
 
-        runPrepareCountdown(prepareTime, roundTime, downtimeTime)
-        this.state = State.PREPARING
-        onPrepare()
+        runPreparePhase(prepareTime) {
+            runDuringRoundPhase(roundTime) {
+                runDowntimePhase(downtimeTime){
+                    setFinished()
+                }
+            }
+        }
     }
 
     val canStart get() = this.state == State.READY
@@ -177,36 +273,37 @@ abstract class Round(
         if (!canFinish)
             throw IllegalStateException("State should be running")
 
-        this.cancelAllTimers()
-        this.whenFinished = System.currentTimeMillis()
-        this.state = State.FINISHED
-
-        onFinish()
+        setFinished()
     }
 
     val canFinish get() = this.state == State.RUNNING
 
-    fun timeout(prePauseTime: Long, pauseTime: Long, postPauseTime: Long) {
+    fun timeout() {
         if (!canTimeout)
             throw IllegalStateException("Can't timeout")
 
         if (this.state == State.PREPARING) {
-            prepareCountdown?.reset()
-            prepareCountdown?.stop()
-            runPauseCountdown(pauseTime, postPauseTime)
+            runPausePhase(pauseTime) {
+                runPreparePhase(prepareTime) {
+                    setRunning()
+                }
+            }
         }
 
         if (this.state == State.RUNNING) {
-            duringRoundCountdown?.pause()
-            runPrePauseCountdown(prePauseTime, pauseTime, postPauseTime)
+            runPrePausePhase(prePauseTime) {
+                runPausePhase(pauseTime) {
+                    runPostPausePhase(postPauseTime) {
+                        setRunning()
+                    }
+                }
+            }
         }
-
-        this.state = State.PRE_PAUSE
-        onPrePause()
     }
 
-    val canTimeout get() = (canTimeoutWhenRunning && state == State.RUNNING) || state == State.PREPARING
+    val canTimeout get() = isTimeoutAllowed && (canTimeoutWhenRunning && state == State.RUNNING) || state == State.PREPARING
 
+    //todo этот метод переписать под чек всех подходящих стейтов и потом засунуть в onStateChange
     fun pause() {
         if (!canPause)
             throw IllegalStateException("Can't pause")
@@ -216,8 +313,9 @@ abstract class Round(
         onPause()
     }
 
-    val canPause get() = this.state == State.RUNNING
+    val canPause get() = isPauseAllowed && this.state == State.RUNNING
 
+    //todo этот метод переписать под чек всех подходящих стейтов и потом засунуть в onStateChange
     fun unpause() {
         if (!canUnpause)
             throw IllegalStateException("Can't unpause")
