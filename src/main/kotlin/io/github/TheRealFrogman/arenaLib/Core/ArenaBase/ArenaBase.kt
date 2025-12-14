@@ -36,7 +36,7 @@ abstract class ArenaBase(
     abstract val maxPlayersPerTeam: Int
     abstract val minPlayersPerTeam: Int
 
-    val players = teamsInitializers.flatMap { it.players }.distinct().toMutableSet()
+    val players = teamsInitializers.flatMap { it.players }.distinct().toMutableList()
     val teams = teamsInitializers.map { Team(this, it) }
 
     //mandatory components
@@ -47,6 +47,7 @@ abstract class ArenaBase(
         check(teams.isNotEmpty()) { "Teams should not be empty" }
         check(teams.all { it.players.size >= minPlayersPerTeam }) { "Not enough players in teams" }
         check(teams.all { it.players.size <= maxPlayersPerTeam }) { "Too many players in teams" }
+        check(teams.all { it.players.distinct().size == it.players.size }) { "Duplicate players in teams" }
 
         check(spawnPoints.isNotEmpty()) { "SpawnPoints should not be empty" }
 
@@ -108,10 +109,11 @@ abstract class ArenaBase(
     abstract val maxPlayers: Int
 
     fun isPlayerInArena(p: ArenaPlayer) = this.players.stream()
-            .anyMatch { it.bukkitPlayerUniquieId == p.bukkitPlayerUniquieId }
+            .anyMatch { it.uniqueId == p.uniqueId }
 
     open fun leave(arenaPlayer: ArenaPlayer) {
         this.players.remove(arenaPlayer)
+        arenaPlayer.restoreAll()
         onLeave(arenaPlayer)
     }
 

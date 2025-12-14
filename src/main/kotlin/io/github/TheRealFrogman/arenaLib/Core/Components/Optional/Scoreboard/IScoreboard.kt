@@ -6,7 +6,7 @@ interface IScoreboard<T> {
 
     fun setScore(type: T, score: Long)
 
-    fun getScore(type: T): Long
+    fun getScore(type: T): Long?
 
     val leader: T?
 

@@ -3,32 +3,21 @@ package io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
+import org.bukkit.GameMode
 
-class Spectators(
-    arena: ArenaBase,
-    var onSpectatorAdd: OnSpectatorAdd,
-    var onSpectatorRemove: OnSpectatorRemove
-) : ArenaComponent(arena) {
+class Spectators(arena: ArenaBase) : ArenaComponent(arena) {
 
-    fun interface OnSpectatorAdd {
-        fun execute(player: ArenaPlayer)
-    }
-
-    fun interface OnSpectatorRemove {
-        fun execute(player: ArenaPlayer)
-    }
-
-    var spectators: MutableSet<ArenaPlayer> = HashSet()
+    var spectators: MutableList<ArenaPlayer> = mutableListOf()
 
     fun addSpectator(ap: ArenaPlayer): Boolean {
         val result = this.spectators.add(ap)
-        onSpectatorAdd.execute(ap)
+        ap.changeGamemodeWithBackup(GameMode.SPECTATOR)
         return result
     }
 
     fun removeSpectator(ap: ArenaPlayer): Boolean {
         val result = this.spectators.remove(ap)
-        onSpectatorRemove.execute(ap)
+        ap.restoreGamemode()
         return result
     }
 }

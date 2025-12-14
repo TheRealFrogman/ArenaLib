@@ -17,8 +17,9 @@ abstract class WinnableArena(
     override fun onFinish() {
         winners += declareWinners()
 
-        TODO("будто это смысла не имеет")
         onWin(winners)
+
+        TODO("будто это смысла не имеет")
     }
 
     private  var winners: MutableList<ArenaPlayer> = ArrayList()

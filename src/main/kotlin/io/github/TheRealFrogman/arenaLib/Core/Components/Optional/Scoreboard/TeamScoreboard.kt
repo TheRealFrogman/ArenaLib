@@ -7,28 +7,23 @@ import java.util.Collections
 import java.util.HashMap
 import java.util.Map
 
-class TeamScoreboard(
-    arena: ArenaBase,
-    private val onScoreChanged: OnScoreChanged
-) : ArenaComponent(arena), IScoreboard<Team> {
-
-    fun interface OnScoreChanged {
-        fun execute(team: Team, score: Long)
-    }
+class TeamScoreboard(arena: ArenaBase) : ArenaComponent(arena), IScoreboard<Team> {
 
     private val scoreboard: MutableMap<Team, Long> = HashMap()
 
+    init {
+        this.arena.teams.forEach { scoreboard.computeIfAbsent(it) { 0 } }
+    }
+
     override fun addScore(team: Team, amount: Long) {
         scoreboard.put(team, scoreboard.get(team)!! + amount)
-        onScoreChanged.execute(team, scoreboard.get(team)!!)
     }
 
     override fun setScore(team: Team, score: Long) {
         scoreboard.put(team, score)
-        onScoreChanged.execute(team, score)
     }
 
-    override fun getScore(team: Team): Long = this.scoreboard.get(team)!!
+    override fun getScore(team: Team): Long? = this.scoreboard[team]
 
     override val leader: Team?
         get() = Collections.max<MutableMap.MutableEntry<Team, Long>?>(

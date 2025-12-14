@@ -7,7 +7,7 @@ class ArenaPlayerRepository() {
     val playerStore = mutableMapOf<UUID, ArenaPlayer>()
 
     fun addArenaPlayer(arenaPlayer: ArenaPlayer) {
-        playerStore[arenaPlayer.bukkitPlayerUniquieId] = arenaPlayer
+        playerStore[arenaPlayer.uniqueId] = arenaPlayer
     }
 
     fun removeArenaPlayer(playerId: UUID) {

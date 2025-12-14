@@ -10,28 +10,20 @@ class LobbyWithTimerWithoutTeleportLocation(
     maxPlayers: Int,
     minPlayersToStart: Int,
     playerCountToSeconds: MutableList<PlayerCountToSeconds>,
-    private val _onTimerRunExceptWhenDepleted: OnTimerRunExceptWhenDepleted,
-    private val _onTimerDepleted: OnTimerDepleted,
+    private val _onTimerRunExceptWhenDepleted: (currentTimer: Long) -> Unit,
+    private val _onTimerDepleted: () -> Unit,
     plugin: JavaPlugin,
 ) : LobbyWithTimer(arena, minPlayers, maxPlayers,minPlayersToStart, playerCountToSeconds, plugin) {
-
-    fun interface OnTimerRunExceptWhenDepleted {
-        fun execute(сurrentTimer: Int)
-    }
-
-    fun interface OnTimerDepleted {
-        fun execute()
-    }
 
     //todo тут надо сделать, чтобы по истечению таймера игрок сразу телепортировался в арену
     override fun onTimerDepleted() {
         TODO("Not yet implemented")
-        _onTimerDepleted.execute()
+        _onTimerDepleted.invoke()
 
     }
 
-    override fun onTimerRunExceptWhenDepleted(сurrentTimer: Int) {
+    override fun onTimerRunExceptWhenDepleted(currentTimer: Long) {
         TODO("Not yet implemented")
-        _onTimerRunExceptWhenDepleted.execute(сurrentTimer)
+        _onTimerRunExceptWhenDepleted.invoke(currentTimer)
     }
 }

@@ -4,19 +4,19 @@ import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import org.bukkit.Location
 import org.bukkit.World
 
-class SpawnPoint(@JvmField val spawnLocation: Location) {
-    val world: World?
-        get() = spawnLocation.getWorld()
+class SpawnPoint(val spawnLocation: Location) {
+    val world: World
+        get() = spawnLocation.world
     val x: Double
-        get() = spawnLocation.getX()
+        get() = spawnLocation.x
     val y: Double
-        get() = spawnLocation.getY()
+        get() = spawnLocation.y
     val z: Double
-        get() = spawnLocation.getZ()
+        get() = spawnLocation.z
     val yaw: Float
-        get() = spawnLocation.getYaw()
+        get() = spawnLocation.yaw
     val pitch: Float
-        get() = spawnLocation.getPitch()
+        get() = spawnLocation.pitch
 
     fun spawnPlayer(player: ArenaPlayer) {
         player.teleport(spawnLocation)

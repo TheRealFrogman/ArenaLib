@@ -13,8 +13,8 @@ class LobbyWithTimerAndTeleportLocation(
     minPlayersToStart: Int,
     playerCountToSeconds: MutableList<PlayerCountToSeconds>,
     private val teleportLocation: Location,
-    private val _onTimerRunExceptWhenDepleted: OnTimerRunExceptWhenDepleted,
-    private val _onTimerDepleted: OnTimerDepleted,
+    private val _onTimerRunExceptWhenDepleted: (currentTimer: Long) -> Unit,
+    private val _onTimerDepleted: () -> Unit,
     plugin: JavaPlugin,
 ) : LobbyWithTimer(
     arena,
@@ -24,14 +24,6 @@ class LobbyWithTimerAndTeleportLocation(
     playerCountToSeconds,
     plugin
 ) {
-
-    fun interface OnTimerRunExceptWhenDepleted {
-        fun execute(сurrentTimer: Int)
-    }
-
-    fun interface OnTimerDepleted {
-        fun execute()
-    }
 
     override fun onJoinHook(player: ArenaPlayer) {
         super.onJoinHook(player)
@@ -44,11 +36,11 @@ class LobbyWithTimerAndTeleportLocation(
         player.restoreLocation()
     }
 
-    override fun onTimerRunExceptWhenDepleted(сurrentTimer: Int) {
-        _onTimerRunExceptWhenDepleted.execute(сurrentTimer)
+    override fun onTimerRunExceptWhenDepleted(currentTimer: Long) {
+        _onTimerRunExceptWhenDepleted.invoke(currentTimer)
     }
 
     override fun onTimerDepleted() {
-        _onTimerDepleted.execute()
+        _onTimerDepleted.invoke()
     }
 }

@@ -7,8 +7,8 @@ import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Pla
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
 import io.github.TheRealFrogman.arenaLib.Core.Facets.ICasualArena
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.plugin.java.JavaPlugin
-import java.util.*
 
 class DeathmatchArena internal constructor(
     name: String,
@@ -19,43 +19,35 @@ class DeathmatchArena internal constructor(
     override val maxPlayersPerTeam: Int,
     teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin,
-) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, plugin), ICasualArena {
+) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, 5, plugin), ICasualArena {
 
     //Optional components
-    private val scoreboard = PlayerScoreboard(
-            this,
-            { player: ArenaPlayer, score: Long -> 123 })
+    private val scoreboard = PlayerScoreboard(this)
 
     override val minPlayers = 2
 
-    override fun onBukkitKill(killer: ArenaPlayer, victim: ArenaPlayer) {
-        scoreboard.addScore(killer, 1)
-
-        val copySpawnpoints: MutableList<SpawnPoint?> = ArrayList<SpawnPoint?>(spawnPointManager.getSpawns())
-        Collections.shuffle(copySpawnpoints)
-
-        copySpawnpoints.get(0)!!.spawnPlayer(victim)
+    override fun onBukkitKill(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent) {
+        scoreboard.addScore(metadata.killer, 1)
+        spawnPointManager.spawnWithLeastPlayersAround(metadata.victim)
     }
 
     override fun onStart() {
-        TODO("заставнить игроков")
+        TODO("заспавнить игроков")
+
+        TODO("А ТОЧНЕЕ НАЧАТЬ РАУНДЫ" +
+                "А В НАЧАЛЕ КАЖДОГО РАУНДА СПАВНИТЬ ИГРОКОВ")
     }
 
     override fun declareWinners(): List<ArenaPlayer> {
         TODO("Not yet implemented")
     }
-//
-//    override fun checkWinCondition(probablyWinners: List<ArenaPlayer>): List<Boolean> {
-//        val leader = scoreboard.leader ?: return false
-//
-//        return leader.bukkitPlayerUniquieId == probablyWinner.bukkitPlayerUniquieId
-//    }
 
     override fun onWin(winners: List<ArenaPlayer>) {
 
         TODO("перевести игроков в спектаторы и через время" +
-                "телепортировать игрока туда, где он был. " +
-                "Надо запоминать локацию где-то"
+                "телепортировать игрока туда, где он был до входа на арену. " +
+                "Надо запоминать локацию где-то." +
+                "Запоминаю в классе игрока"
         )
 
         TODO("написать желаемые методы ArenaPlayer а потом их релизовать")

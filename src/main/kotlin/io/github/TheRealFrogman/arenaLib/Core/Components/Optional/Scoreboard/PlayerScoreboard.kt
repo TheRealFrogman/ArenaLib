@@ -6,30 +6,24 @@ import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
 import java.util.Collections
 import java.util.HashMap
 import java.util.Map
-//todo сделать из скорборда фасад который скрывает Solo и Team скорборды и все
-//todo также сделать интерфейс
-class PlayerScoreboard(
-    arena: ArenaBase,
-    private val onScoreChanged: OnScoreChanged
-) : ArenaComponent(arena), IScoreboard<ArenaPlayer> {
 
-    fun interface OnScoreChanged {
-        fun execute(player: ArenaPlayer, score: Long)
-    }
+class PlayerScoreboard(arena: ArenaBase) : ArenaComponent(arena), IScoreboard<ArenaPlayer> {
 
     private val scoreboard: MutableMap<ArenaPlayer, Long> = HashMap()
 
+    init {
+        this.arena.players.forEach { scoreboard.computeIfAbsent(it) { 0 } }
+    }
+
     override fun addScore(player: ArenaPlayer, amount: Long) {
         scoreboard.put(player, scoreboard.get(player)!! + amount)
-        onScoreChanged.execute(player, scoreboard.get(player)!!)
     }
 
     override fun setScore(player: ArenaPlayer, score: Long) {
         scoreboard.put(player, score)
-        onScoreChanged.execute(player, score)
     }
 
-    override fun getScore(player: ArenaPlayer): Long = this.scoreboard.get(player)!!
+    override fun getScore(player: ArenaPlayer): Long? = this.scoreboard[player]
 
     override val leader: ArenaPlayer?
         get() = Collections.max<MutableMap.MutableEntry<ArenaPlayer, Long>?>(

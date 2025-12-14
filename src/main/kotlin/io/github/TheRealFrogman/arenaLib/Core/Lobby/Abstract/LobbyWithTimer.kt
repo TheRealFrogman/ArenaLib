@@ -16,7 +16,7 @@ abstract class LobbyWithTimer(
 
     interface PlayerCountToSeconds {
         val playerCount: Int
-        val seconds: Int
+        val seconds: Long
     }
 
     init {
@@ -27,16 +27,18 @@ abstract class LobbyWithTimer(
     }
 
     private val countdown = Countdown(
-        plugin,
         0,
         ::onTimerDepleted,
-        ::onTimerRunExceptWhenDepleted
+        ::onTimerRunExceptWhenDepleted,
+        {},
+        {},
+        plugin,
     )
 
     override fun onJoinHook(player: ArenaPlayer) {
         if (players.size >= minPlayersToStart) {
             if (!countdown.isRunning) {
-                countdown.startCountdown()
+                countdown.start()
             }
 
             val newTime = getMappedCountdownTime()
@@ -58,7 +60,7 @@ abstract class LobbyWithTimer(
     override fun onLeaveHook(player: ArenaPlayer) {
         // If player count drops below minimum, stop the countdown
         if (players.size < minPlayersToStart) {
-            countdown.stopCountdown()
+            countdown.stop()
             countdown.reset()
         }
 
@@ -70,10 +72,10 @@ abstract class LobbyWithTimer(
         }
     }
 
-    abstract fun onTimerRunExceptWhenDepleted(сurrentTimer: Int)
+    abstract fun onTimerRunExceptWhenDepleted(currentTimer: Long)
     abstract fun onTimerDepleted()
 
-    private fun getMappedCountdownTime(): Int {
+    private fun getMappedCountdownTime(): Long {
         return playerCountToSeconds
             .filter { it.playerCount <= players.size }
             .maxByOrNull { it.playerCount }

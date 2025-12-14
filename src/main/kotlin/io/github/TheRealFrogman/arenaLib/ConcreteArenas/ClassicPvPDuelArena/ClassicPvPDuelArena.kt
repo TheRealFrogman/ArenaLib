@@ -8,6 +8,7 @@ import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Pla
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
 import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators.Spectators
 import io.github.TheRealFrogman.arenaLib.Core.Facets.ISessionedArena
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.plugin.java.JavaPlugin
 
 class ClassicPvPDuelArena (
@@ -16,7 +17,7 @@ class ClassicPvPDuelArena (
     spawnPoints: MutableList<SpawnPoint>,
     teamsInitializers: MutableList<Team.Initializer>,
     plugin: JavaPlugin,
-) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, plugin), ISessionedArena {
+) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, 5, plugin), ISessionedArena {
 
     override val maxPlayers = 2
     override val minPlayers = 2
@@ -25,21 +26,21 @@ class ClassicPvPDuelArena (
     override val minPlayersPerTeam = 1
 
     //Optional components
-    private val scoreboard = PlayerScoreboard(this, { player: ArenaPlayer, score: Long -> 123})
-    private val spectators = Spectators(this,  {}, {})
+    private val scoreboard = PlayerScoreboard(this)
+    private val spectators = Spectators(this)
 
-    override fun onBukkitKill(killer: ArenaPlayer, victim: ArenaPlayer) {
-        scoreboard.addScore(killer, 1)
-        spectators.addSpectator(victim)
+    override fun onBukkitKill(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent) {
+        scoreboard.addScore(metadata.killer, 1)
+        spectators.addSpectator(metadata.victim)
         //todo в конце раунда заспавнить на одной из точек спавна и сменить gamemode на adventure
         //todo сделать откат этих состояний как-то, запрограммировать можно где-то
     }
 
     override fun declareWinners(): List<ArenaPlayer> {
-        if(scoreboard.leader == null)
-            return listOf()
+        return if(scoreboard.leader == null)
+            listOf()
         else
-            return listOf(scoreboard.leader!!)
+            listOf(scoreboard.leader!!)
     }
 
     override fun onWin(winners: List<ArenaPlayer>) {

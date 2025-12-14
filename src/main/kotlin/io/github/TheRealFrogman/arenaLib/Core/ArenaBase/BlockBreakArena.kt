@@ -32,9 +32,9 @@ abstract class BlockBreakArena(
 
             val arenaPlayer = maybeArenaPlayer as ArenaPlayer
 
-            val isfRegionContainsBlock = region.contains(event.block.location)
+            val isRegionContainsBlock = region.contains(event.block.location)
 
-            val valid = isPlayerInArena(arenaPlayer) && isfRegionContainsBlock && event.block.type in blocksAllowedToBreak
+            val valid = isPlayerInArena(arenaPlayer) && isRegionContainsBlock && event.block.type in blocksAllowedToBreak
 
             if (valid) {
                 brokenBlocks.computeIfAbsent(arenaPlayer) { mutableListOf() }.add(event.block)

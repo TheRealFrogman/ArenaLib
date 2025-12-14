@@ -13,7 +13,11 @@ class Team(
 
     }
 
-    class Initializer(val players: MutableList<ArenaPlayer>)
+    init {
+        initializer.players.forEach { it.setCurrentTeam(this) }
+    }
+
+    data class Initializer(val players: MutableList<ArenaPlayer>)
 
     var players: MutableList<ArenaPlayer> = initializer.players
         private set

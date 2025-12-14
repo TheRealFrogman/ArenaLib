@@ -13,7 +13,6 @@ class RegisterArenaPlayerListener(plugin: JavaPlugin) : Listener {
         plugin.server.pluginManager.registerEvents(this, plugin)
     }
 
-
     val arenaPlayerRepository = ArenaLib.context.arenaPlayerRepository
 
     @EventHandler

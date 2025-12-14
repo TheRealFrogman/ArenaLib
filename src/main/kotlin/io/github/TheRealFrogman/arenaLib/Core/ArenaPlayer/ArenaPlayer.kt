@@ -2,20 +2,35 @@ package io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer
 
 import com.google.common.collect.ImmutableMap
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
 import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
-class ArenaPlayer(private val bukkitPlayer: Player) {
+data class ArenaPlayer(
+    private val bukkitPlayer: Player,
+) {
 
-    val bukkitPlayerUniquieId: UUID = bukkitPlayer.getUniqueId()
+    val location = bukkitPlayer.location
 
-    private var currentArena: ArenaBase? = null
+    val uniqueId: UUID = bukkitPlayer.uniqueId
+
+    var team: Team? = null
+        private set
+
+    var currentArena: ArenaBase? = null
+        private set
+
+    fun setCurrentTeam(currentTeam: Team?) {
+        team = currentTeam
+    }
+
     fun setCurrentArena(currentArena: ArenaBase?) {
         this.currentArena = currentArena
-        TODO("Not yet implemented")
+        TODO("Not yet implemented" +
+                "не знаю что я хотел сделать")
     }
 
     fun teleport(location: Location) {
@@ -66,5 +81,25 @@ class ArenaPlayer(private val bukkitPlayer: Player) {
     }
     fun restoreInventory() {
         TODO("Not yet implemented")
+    }
+
+    val levelBackup: Nothing = TODO("делать снапшот инвентаря")
+    fun changeLevelWithBackup(newLevel: Int) {
+        TODO("Not yet implemented")
+        TODO("делать снапшот инвентаря и давать другие предметы")
+    }
+    fun restoreLevel() {
+        TODO("Not yet implemented")
+    }
+
+    fun restoreAll() {
+        restoreInventory()
+        restoreLocation()
+        restoreGamemode()
+        restoreLevel()
+    }
+
+    fun equals(other: ArenaPlayer): Boolean {
+        return uniqueId == other.uniqueId
     }
 }
