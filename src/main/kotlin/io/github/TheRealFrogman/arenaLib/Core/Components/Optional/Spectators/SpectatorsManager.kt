@@ -1,11 +1,11 @@
 package io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
-import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponent
 import org.bukkit.GameMode
 
-class Spectators(arena: ArenaBase) : ArenaComponent(arena) {
+class SpectatorsManager(override val arena: Arena) : ArenaComponent {
 
     var spectators: MutableList<ArenaPlayer> = mutableListOf()
 

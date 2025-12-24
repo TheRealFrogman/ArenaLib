@@ -1,29 +1,102 @@
 package io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Round
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
-import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponent
+import java.util.Collections
 
 class RoundManager(
-    arena: ArenaBase,
-) : ArenaComponent(arena) {
+    override val arena: Arena,
+) : ArenaComponent {
 
-    protected val rounds = listOf<Round>()
+    enum class Event {
+        INIT
+    }
 
-    fun getRounds(): Array<Round> = rounds.toTypedArray()
+    private val listeners = mutableMapOf<Event, MutableList<RoundManager.() -> Unit>>()
+    fun addListener(event: Event, listener: RoundManager.() -> Unit) {
+        listeners.computeIfAbsent(event) { mutableListOf() }.add(listener)
+    }
 
-    fun getRoundByNumber(number: Int): Round = rounds[number - 1]
+    var initialized = false
+        private set
+
+    protected val rounds = mutableListOf<Round?>()
+
+    fun getRounds() = Collections.unmodifiableList(rounds)
+
+    //можно получить раунд и привязать слушатель
+    fun getRoundByNumber(number: Int): Round = rounds[number - 1] ?: throw IllegalStateException("Round $number not found")
 
     val roundCount get() = rounds.size
 
-    private var currentRoundIndex = 0
+    var currentRoundIndex = 0
+        private set
 
-    val currentRound: Round get() = rounds[currentRoundIndex]
+    val currentRound: Round get() = rounds[currentRoundIndex] ?: throw IllegalStateException("Current round not found")
 
-    fun nextRound() {
+    val lastRound get() = rounds.last()
+
+    val hasNext: Boolean get() = currentRoundIndex < rounds.size - 1
+
+    fun nextRound(): Round {
+        if (!hasNext)
+            return currentRound
+
         currentRoundIndex++
+        currentRound.start()
+        return currentRound
     }
-    //сделать чтобы можно было создать массив из раундов сразу и дать каждому раунду время
-    //по истечению времени в раунде будет выполняться переданная лямбда
 
-    //todo то есть создавать раунды буду в менеджере. создание раундов будет внутри
+    fun timeoutCurrentRound() {
+        if (currentRound.canTimeout) {
+            if (currentRound.state == Round.State.DOWNTIME) {
+                if (hasNext) {
+                    val round = rounds[currentRoundIndex + 1] ?: return
+
+                    round.addOnce(Round.Event.START, { round.timeout() })
+                }
+            } else {
+                currentRound.timeout()
+            }
+        }
+    }
+
+    fun startRoundSequence() {
+
+        for(i in 0 until rounds.size) {
+            //!! потому что мы берем размер массива
+            val round = rounds[i]!!
+
+            val nextRound = rounds[i + 1]
+
+            if (nextRound == null) {
+                round.addListener(Round.Event.FINISH, { arena.finish() })
+                return
+            }
+
+            round.addListener(Round.Event.FINISH, { nextRound.start() })
+        }
+
+        rounds[0]?.start()
+    }
+
+    fun initIdenticalRounds(count: Int, config: Round.RoundConfig) {
+        check(!initialized) { "Already initialized" }
+
+        for(i in count - 1 downTo 0) {
+            rounds.add(Round(arena, config))
+        }
+
+        initialized = true
+        listeners[Event.INIT]?.forEach { it() }
+    }
+
+    fun initMappedRounds(configs: List<Round.RoundConfig>){
+        check(!initialized) { "Already initialized" }
+
+        configs.forEach { rounds.add(Round(arena, it)) }
+
+        initialized = true
+        listeners[Event.INIT]?.forEach { it() }
+    }
 }

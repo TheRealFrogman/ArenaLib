@@ -1,37 +1,92 @@
 package io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Round
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
-import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponent
 import io.github.TheRealFrogman.arenaLib.Core.Utilities.Countdown
 import java.util.UUID
 
-abstract class Round(
-    arena: ArenaBase,
-    val prepareTime: Long,
-    val roundTime: Long,
-    val downtimeTime: Long,
-    val prePauseTime: Long,
-    val pauseTime: Long,
-    val postPauseTime: Long,
-    private val isTimeoutAllowed: Boolean,
-    private val isPauseAllowed: Boolean,
-    private val canTimeoutWhenRunning: Boolean,
-) : ArenaComponent(arena) {
+class Round(
+    override val arena: Arena,
+    val roundConfig: RoundConfig
+) : ArenaComponent {
 
-    abstract fun onPrepare()
-    abstract fun onPrepareTick(time: Long)
-    abstract fun onStart()
-    abstract fun onDuringRoundTick(time: Long)
-    abstract fun onDowntime()
-    abstract fun onDowntimeTick(time: Long)
-    abstract fun onFinish()
-    abstract fun onPrePause()
-    abstract fun onPrePauseTick(time: Long)
-    abstract fun onPause()
-    abstract fun onDuringPauseTick(time: Long)
-    abstract fun onPostPause()
-    abstract fun onPostPauseTick(time: Long)
-    abstract fun onUnpause()
+    enum class Event {
+        PREPARE,
+        START,
+        DOWNTIME,
+        FINISH,
+        PRE_PAUSE,
+        PAUSE,
+        POST_PAUSE,
+        UNPAUSE
+    }
+
+    enum class EventTimer {
+        PREPARE_TIMER_TICK,
+        DURING_ROUND_TIMER_TICK,
+        DOWNTIME_TIMER_TICK,
+        PRE_PAUSE_TIMER_TICK,
+        PAUSE_TIMER_TICK,
+        POST_PAUSE_TIMER_TICK,
+    }
+
+    data class RoundConfig(
+        val prepareTime: Long,
+        val roundTime: Long,
+        val downtimeTime: Long,
+        val prePauseTime: Long,
+        val pauseTime: Long,
+        val postPauseTime: Long,
+        val isTimeoutAllowed: Boolean,
+        val isPauseAllowed: Boolean,
+        val canTimeoutWhenRunning: Boolean,
+    )
+
+    val prepareTime: Long get() = roundConfig.prepareTime
+    val roundTime: Long get() = roundConfig.roundTime
+    val downtimeTime: Long get() = roundConfig.downtimeTime
+    val prePauseTime: Long get() = roundConfig.prePauseTime
+    val pauseTime: Long get() = roundConfig.pauseTime
+    val postPauseTime: Long get() = roundConfig.postPauseTime
+    val isTimeoutAllowed: Boolean get() = roundConfig.isTimeoutAllowed
+    val isPauseAllowed: Boolean get() = roundConfig.isPauseAllowed
+    val canTimeoutWhenRunning: Boolean get() = roundConfig.canTimeoutWhenRunning
+
+    private val listenersByEvent = mutableMapOf<Event, MutableList<Round.() -> Unit>>()
+    private val listenersTimerByEvent = mutableMapOf<EventTimer, MutableList<Round.(Long) -> Unit>>()
+
+    fun addListener(event: Event, listener: Round.() -> Unit) {
+        listenersByEvent.computeIfAbsent(event) { mutableListOf() }.add(listener)
+    }
+
+    fun addListenerTimer(event: EventTimer, listener: Round.(Long) -> Unit) {
+        listenersTimerByEvent.computeIfAbsent(event) { mutableListOf() }.add(listener)
+    }
+
+    fun removeAllListeners(event: Event) {
+        listenersByEvent.remove(event)
+    }
+
+    fun removeAllListenersTimer(event: EventTimer) {
+        listenersTimerByEvent.remove(event)
+    }
+
+    fun removeListener(event: Event, listener: Round.() -> Unit) {
+        listenersByEvent[event]?.remove(listener)
+    }
+
+    fun removeListenerTimer(event: EventTimer,listener: Round.(Long) -> Unit) {
+        listenersTimerByEvent[event]?.remove(listener)
+    }
+
+    fun addOnce(event: Event, listener: Round.() -> Unit) {
+        listenersByEvent
+            .computeIfAbsent(event) { mutableListOf() }
+                .add({
+                    listener()
+                    listenersByEvent[event]?.remove(listener)
+                })
+    }
 
     var state: State = State.READY
         private set(value) {
@@ -80,7 +135,7 @@ abstract class Round(
         duringRoundCountdown = Countdown(
             roundTime,
             onCountdownDepleted,
-            ::onDuringRoundTick,
+            { time -> listenersTimerByEvent[EventTimer.DURING_ROUND_TIMER_TICK]?.forEach { it(this, time) } },
             {},
             {},
             this.arena.plugin
@@ -90,11 +145,12 @@ abstract class Round(
 
     private fun runPreparePhase(prepareTime: Long, onCountdownDepleted: () -> Unit) {
         this.state = State.PREPARING
+        listenersByEvent[Event.PREPARE]?.forEach { it(this) }
 
         prepareCountdown = Countdown(
             prepareTime,
             onCountdownDepleted,
-            ::onPrepareTick,
+            { time -> listenersTimerByEvent[EventTimer.PREPARE_TIMER_TICK]?.forEach { it(this, time) } },
             {},
             {},
             this.arena.plugin
@@ -104,11 +160,12 @@ abstract class Round(
 
     private fun runPausePhase(pauseTime: Long, onCountdownDepleted: () -> Unit) {
         this.state = State.PAUSED
+        listenersByEvent[Event.PAUSE]?.forEach { it(this) }
 
         pauseCountdown = Countdown(
             pauseTime,
             onCountdownDepleted,
-            ::onDuringPauseTick,
+            { time -> listenersTimerByEvent[EventTimer.PAUSE_TIMER_TICK]?.forEach { it(this, time) } },
             {},
             {},
             this.arena.plugin
@@ -118,11 +175,12 @@ abstract class Round(
 
     private fun runPrePausePhase(prePauseTime: Long, onCountdownDepleted: () -> Unit) {
         this.state = State.PRE_PAUSE
+        listenersByEvent[Event.PRE_PAUSE]?.forEach { it(this) }
 
         prePauseCountdown = Countdown(
             prePauseTime,
             onCountdownDepleted,
-            ::onPrePauseTick,
+            { time -> listenersTimerByEvent[EventTimer.PRE_PAUSE_TIMER_TICK]?.forEach { it(this, time) } },
             {},
             {},
             this.arena.plugin
@@ -132,11 +190,12 @@ abstract class Round(
 
     private fun runPostPausePhase(postPauseTime: Long, onCountdownDepleted: () -> Unit) {
         this.state = State.POST_PAUSE
+        listenersByEvent[Event.POST_PAUSE]?.forEach { it(this) }
 
         postPauseCountdown = Countdown(
             postPauseTime,
             onCountdownDepleted,
-            ::onPostPauseTick,
+            { time -> listenersTimerByEvent[EventTimer.POST_PAUSE_TIMER_TICK]?.forEach { it(this, time) } },
             {},
             {},
             this.arena.plugin
@@ -146,11 +205,12 @@ abstract class Round(
 
     private fun runDowntimePhase(downtimeTime: Long, onCountdownDepleted: () -> Unit) {
         this.state = State.DOWNTIME
+        listenersByEvent[Event.DOWNTIME]?.forEach { it(this) }
 
         downtimeCountdown = Countdown(
             downtimeTime,
             onCountdownDepleted,
-            ::onDowntimeTick,
+            { time -> listenersTimerByEvent[EventTimer.DOWNTIME_TIMER_TICK]?.forEach { it(this, time) } },
             {},
             {},
             this.arena.plugin
@@ -167,120 +227,88 @@ abstract class Round(
     }
 
     private fun onStateChange (oldState: State, newState: State) {
-        when (newState) {
-            State.PREPARING -> {
-                when(oldState) {
-                    State.PAUSED -> {
-                        if (prepareCountdown?.isPaused == true)
-                            prepareCountdown?.resume()
-                    }
-                    else -> throw IllegalStateException("Unhandled state: $oldState")
-                }
-                onPrepare()
+
+        when(oldState to newState) {
+            State.READY to State.PREPARING -> {}
+
+            State.PREPARING to State.RUNNING -> {
+                this.whenStarted = System.currentTimeMillis()
+
+                listenersByEvent[Event.START]?.forEach { it(this) }
             }
 
-            State.RUNNING -> {
-                when(oldState) {
-                    State.PREPARING -> {
-                        this.whenStarted = System.currentTimeMillis()
-                        onStart()
-                    }
-                    State.POST_PAUSE -> {
-
-                        if (duringRoundCountdown?.isPaused == true)
-                            duringRoundCountdown?.resume()
-
-                        if (prepareCountdown?.isPaused == true)
-                            prepareCountdown?.resume()
-
-                        onUnpause()
-                    }
-                    State.PAUSED -> {
-
-                    }
-                    State.DOWNTIME -> {
-
-                    }
-                    else -> throw IllegalStateException("Unhandled state: $oldState")
-                }
+            State.PRE_PAUSE to State.PAUSED -> {
+                prePauseCountdown?.reset()
+                prePauseCountdown?.resume()
             }
-            State.PRE_PAUSE -> {
-                when(oldState) {
-                    State.RUNNING -> {
-                        duringRoundCountdown?.pause()
-                    }
-
-                    State.DOWNTIME -> {
-                        TODO("как-то сделать перенос паузы")
-                    }
-                    else -> throw IllegalStateException("Unhandled state: $oldState")
+            State.PAUSED to State.PREPARING -> {
+                if (prepareCountdown?.isPaused == true) {
+                    prepareCountdown?.reset()
+                    prepareCountdown?.resume()
                 }
-                onPrePause()
-            }
 
-            State.PAUSED -> {
-                when(oldState) {
-                    State.PREPARING -> {
-                        prepareCountdown?.reset()
-                        prepareCountdown?.pause()
-                    }
-                    State.RUNNING -> {
-                        duringRoundCountdown?.pause()
-                    }
-                    State.DOWNTIME -> {
-                        TODO("как-то сделать перенос паузы")
-                    }
-                    else -> throw IllegalStateException("Unhandled state: $oldState")
-                }
-                onPause()
+                pauseCountdown?.reset()
+                pauseCountdown?.pause()
             }
+            State.PAUSED to State.POST_PAUSE -> {
+                pauseCountdown?.reset()
+                pauseCountdown?.pause()
+            }
+            State.PREPARING to State.PAUSED -> {
+                prepareCountdown?.reset()
+                prepareCountdown?.pause()
 
-            State.POST_PAUSE -> {
+            }
+            State.POST_PAUSE to State.RUNNING -> {
                 if (duringRoundCountdown?.isPaused == true)
                     duringRoundCountdown?.resume()
 
-                onPostPause()
+                listenersByEvent[Event.UNPAUSE]?.forEach { it(this) }
+            }
+            State.RUNNING to State.DOWNTIME -> {
+                this.whenFinished = System.currentTimeMillis()
+
+                duringRoundCountdown?.reset()
+                duringRoundCountdown?.pause()
+
+            }
+            State.RUNNING to State.PRE_PAUSE -> {
+                duringRoundCountdown?.pause()
             }
 
-            State.DOWNTIME -> onDowntime()
+            else -> throw IllegalStateException("Unhandled state transition: $oldState -> $newState")
+        }
 
+        when (newState) {
             State.FINISHED -> {
-                this.whenFinished = System.currentTimeMillis()
-                onFinish()
+                listenersByEvent[Event.FINISH]?.forEach { it(this) }
                 cancelAllTimers()
             }
-            else -> throw IllegalStateException("Unknown state: $newState")
+            else -> {}
         }
     }
 
     fun start() {
-        if (!canStart)
-            throw IllegalStateException("Can't start")
+        check(canStart) { "Can't start" }
 
         runPreparePhase(prepareTime) {
             runDuringRoundPhase(roundTime) {
-                runDowntimePhase(downtimeTime){
+                runDowntimePhase(downtimeTime) {
                     setFinished()
                 }
             }
         }
     }
 
-    val canStart get() = this.state == State.READY
+    val canStart
+        get() = this.state == State.READY
 
-    // попросить нейросеть написать это
     fun finish() {
-        if (!canFinish)
-            throw IllegalStateException("State should be running")
-
         setFinished()
     }
 
-    val canFinish get() = this.state == State.RUNNING
-
     fun timeout() {
-        if (!canTimeout)
-            throw IllegalStateException("Can't timeout")
+        check(canTimeout) { "Can't timeout" }
 
         if (this.state == State.PREPARING) {
             runPausePhase(pauseTime) {
@@ -301,31 +329,18 @@ abstract class Round(
         }
     }
 
-    val canTimeout get() = isTimeoutAllowed && (canTimeoutWhenRunning && state == State.RUNNING) || state == State.PREPARING
+    val canTimeout get() = isTimeoutAllowed && ((canTimeoutWhenRunning && state == State.RUNNING) || state == State.PREPARING)
 
-    //todo этот метод переписать под чек всех подходящих стейтов и потом засунуть в onStateChange
+    private var stateBeforePause: State? = null
     fun pause() {
-        if (!canPause)
-            throw IllegalStateException("Can't pause")
-
-        duringRoundCountdown?.pause()
+        stateBeforePause = this.state
         this.state = State.PAUSED
-        onPause()
     }
 
-    val canPause get() = isPauseAllowed && this.state == State.RUNNING
-
-    //todo этот метод переписать под чек всех подходящих стейтов и потом засунуть в onStateChange
     fun unpause() {
-        if (!canUnpause)
-            throw IllegalStateException("Can't unpause")
-
-        duringRoundCountdown?.resume()
-        this.state = State.RUNNING
-        onUnpause()
+        checkNotNull(stateBeforePause) { "Can't unpause" }
+        this.state = stateBeforePause!!
     }
-
-    val canUnpause get() = this.state == State.PAUSED || this.state == State.PRE_PAUSE
 
     fun cancelAllTimers() {
         try {

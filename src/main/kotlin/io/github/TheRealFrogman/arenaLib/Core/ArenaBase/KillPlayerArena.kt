@@ -1,9 +1,12 @@
 package io.github.TheRealFrogman.arenaLib.Core.ArenaBase
 
+import io.github.TheRealFrogman.arenaLib.ArenaLib
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena.KillMetadata
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponentRegistry
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
-import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
+import org.bukkit.block.Block
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -16,25 +19,22 @@ import org.bukkit.plugin.java.JavaPlugin
 import kotlin.jvm.optionals.getOrNull
 
 typealias Damager = ArenaPlayer
-typealias Damagers = MutableList<Damager>
+typealias Damagers = MutableSet<Damager>
 
 typealias Victim = ArenaPlayer
-typealias Victims = MutableList<Victim>
+typealias Victims = MutableSet<Victim>
+
 
 abstract class KillPlayerArena(
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
-    teamsInitializers: MutableList<Team.Initializer>,
-    private val timeAllottedToBeAssisterSeconds: Long,
+    private val timeAllottedToBeAssisterMs: Long, // milliseconds
+    componentRegistry: ArenaComponentRegistry,
     plugin: JavaPlugin,
-) : WinnableArena(name, region, spawnPoints, teamsInitializers, plugin) {
+) : Arena(name, region, spawnPoints, componentRegistry, plugin) {
 
-
-    data class DamagerToVictim(
-        val damager: Damager,
-        val victim: Victim
-    ) {
+    data class DamagerToVictim(val damager: Damager, val victim: Victim) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is DamagerToVictim) return false
@@ -69,23 +69,24 @@ abstract class KillPlayerArena(
         val whenDamaged: Long,
         val damage: Double
     )
-    class DamageRegistry() {
+
+    inner class DamageRegistry() {
 
         val metadata: MutableMap<DamagerToVictim, MutableList<DamageMetadata>> = mutableMapOf()
         val victimsByDamager: MutableMap<Damager, Victims>  = mutableMapOf()
         val damagersByVictim: MutableMap<Victim, Damagers> = mutableMapOf()
 
         fun recordDamage(damager: Damager, victim: Victim, metadata: DamageMetadata) {
-            victimsByDamager.computeIfAbsent(damager) { mutableListOf() }.add(victim)
-            damagersByVictim.computeIfAbsent(victim) { mutableListOf() }.add(damager)
+            victimsByDamager.computeIfAbsent(damager) { mutableSetOf() }.add(victim)
+            damagersByVictim.computeIfAbsent(victim) { mutableSetOf() }.add(damager)
 
-            val maybeValue = this.metadata.entries.stream()
-                .filter { entry -> entry.key.damager == damager && entry.key.victim == victim }
+            val maybeKey = this.metadata.entries.stream()
+                .filter { entry -> entry.key == DamagerToVictim(damager, victim) }
                 .findFirst()
-                .getOrNull()
-                ?.key
-            if (maybeValue != null) {
-                this.metadata[maybeValue]!!.add(metadata)
+                .getOrNull()?.key
+
+            if (maybeKey != null) {
+                this.metadata[maybeKey]!!.add(metadata)
             } else {
                 this.metadata[DamagerToVictim(damager, victim)] = mutableListOf(metadata)
             }
@@ -98,9 +99,8 @@ abstract class KillPlayerArena(
             victims ?: return
             damagers ?: return
 
-            victims.forEach { victim -> damagersByVictim[victim]?.removeIf { damager -> damager == player } }
-            damagers.forEach { damager -> victimsByDamager[damager]?.removeIf { victim -> victim == player } }
-
+            victims.forEach { victim -> damagersByVictim[victim]!!.remove(player) }
+            damagers.forEach { damager -> victimsByDamager[damager]!!.remove(player) }
 
             val iterator = metadata.entries.iterator()
             while (iterator.hasNext()) {
@@ -113,21 +113,43 @@ abstract class KillPlayerArena(
 
         fun deleteExpiredData() {
 
-            TODO("ПРОЙТИСЬ ПО ВСЕЙ МЕТАДАТЕ И ОЧИСТИТЬ ПРОТУХШУЮ" +
-                    "" +
-                    "если список метадаты пустой" +
-                    "ПОТОМ ВЗЯТЬ ВСЕХ ВИКТИМОВ ИЗ УДАЛЕННОЙ МЕТАДАТЫ И У НИХ УДАЛИТЬ ДАМАГЕРА" +
-                    "ПОТОМ ВЗЯТЬ ВСЕХ ДАМАГЕРОВ И УДАЛИТЬ В НИХ ВИКТИМОВ")
+            val mapIterator = metadata.entries.iterator()
 
-            //так сравнивать протухшие данные
-            //if (System.currentTimeMillis() - metadata.whenDamaged > timeAllottedToBeAssisterSeconds * 1000)
-            //      iterator.remove()
+            while (mapIterator.hasNext()) {
+
+                val entry = mapIterator.next()
+                val victim = entry.key.victim
+                val damager = entry.key.damager
+
+                val list = entry.value
+                val listIterator = list.iterator()
+
+                while (listIterator.hasNext()) {
+                    val metadata = listIterator.next()
+                    if (System.currentTimeMillis() - metadata.whenDamaged > timeAllottedToBeAssisterMs) {
+                        listIterator.remove()
+                    }
+
+                    if (list.isEmpty()) {
+                        mapIterator.remove()
+                        victimsByDamager[damager]!!.remove(victim)
+                        damagersByVictim[victim]!!.remove(damager)
+
+                        if (victimsByDamager[damager]!!.isEmpty()) {
+                            victimsByDamager.remove(damager)
+                        }
+                        if (damagersByVictim[victim]!!.isEmpty()) {
+                            damagersByVictim.remove(victim)
+                        }
+                    }
+                }
+            }
 
         }
 
         fun getEarliestDamageMetadata(damager: Damager, victim: Victim): DamageMetadata? {
             return metadata.entries.stream()
-                .filter { entry -> entry.key.damager == damager && entry.key.victim == victim }
+                .filter { entry -> entry.key == DamagerToVictim(damager, victim) }
                 .map { entry -> entry.value.minByOrNull { it.whenDamaged } }
                 .filter { it != null }
                 .findFirst()
@@ -137,7 +159,14 @@ abstract class KillPlayerArena(
         fun deleteAllAboutVictim(victim: Victim) {
             val damagers = damagersByVictim.remove(victim) ?: return
 
-            damagers.forEach { damager -> victimsByDamager[damager]?.removeIf { victim2 -> victim2 == victim } }
+            damagers.forEach { damager ->
+               val victims = victimsByDamager[damager]
+                victims?.remove(victim)
+
+                if (victims != null && victims.isEmpty()) {
+                    victimsByDamager.remove(damager)
+                }
+            }
 
             metadata.entries.removeIf { entry -> entry.key.victim == victim }
         }
@@ -161,19 +190,20 @@ abstract class KillPlayerArena(
             if (victim == damager)
                 return
 
-           damageRegistry.deleteExpiredData()
+            damageRegistry.deleteExpiredData()
 
-            val arenaDamager = players.stream()
-                .filter { arenaPlayer -> arenaPlayer.uniqueId == damager.uniqueId }
-                .findFirst()
-                .getOrNull() ?: return
+            val arenaDamager = ArenaLib.context.arenaPlayerRepository
+                .getArenaPlayer(damager.uniqueId) ?: return
 
-            val arenaVictim = players.stream()
-                .filter { arenaPlayer -> arenaPlayer.uniqueId == victim.uniqueId }
-                .findFirst()
-                .getOrNull() ?: return
+            val arenaVictim = ArenaLib.context.arenaPlayerRepository
+                .getArenaPlayer(victim.uniqueId) ?: return
 
-            //переменная отдельная потому что вдруг я захочу брать урон не финальный а начальный
+            val valid = isPlayerInArena(arenaDamager) && isPlayerInArena(arenaVictim)
+
+            if (!valid)
+                return
+
+            //переменная отдельная потому что вдруг я захочу брать урон не финальный, а начальный
             val damage = e.finalDamage
 
             val damageMetadata = DamageMetadata(
@@ -227,7 +257,7 @@ abstract class KillPlayerArena(
             if (victim !is Player)
                 return
 
-            if (victim.isDead == false)
+            if (!victim.isDead)
                 return
 
             if (e.damageSource.causingEntity !is Player)
@@ -235,7 +265,7 @@ abstract class KillPlayerArena(
             val killer = e.damageSource.causingEntity as Player
 
             if (killer.location.world != victim.location.world)
-                throw Exception("Worlds don't match")
+                return
 
             val arenaKiller = players.stream()
                 .filter { arenaPlayer -> arenaPlayer.uniqueId == killer.uniqueId }
@@ -256,32 +286,31 @@ abstract class KillPlayerArena(
             //удаляем данные о жертве потому что она была убита
             damageRegistry.deleteAllAboutVictim(arenaVictim)
 
-            try {
+            val killMetadata = KillMetadata(
+                arenaKiller,
+                arenaVictim,
+                System.currentTimeMillis(),
+                killingTime,
+                e.isCritical,
+                weapon, //может вернуть air
+                distance,
+                assistedBy
+            )
 
-                onBukkitKill(
-                    KillMetadata(
-                        arenaKiller,
-                        arenaVictim,
-                        System.currentTimeMillis(),
-                        killingTime,
-                        e.isCritical,
-                        weapon, //может вернуть air
-                        distance,
-                        assistedBy
-                    ),
-                    e
-                )
-
-            } catch (e: Exception) {
-
-                catch(this::class, ::onBukkitKill)
-                e.printStackTrace()
-
-            }
+            bukkitKillListeners[KillPlayerArenaEvent.ON_KILL]
+                ?.forEach { it(killMetadata, e) }
         }
     }
 
-    protected abstract fun onBukkitKill(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent)
+    enum class KillPlayerArenaEvent {
+        ON_KILL
+    }
+
+    private val bukkitKillListeners = mutableMapOf<KillPlayerArenaEvent, MutableList<KillPlayerArena.(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent) -> Unit>>()
+
+    fun addListener(event: KillPlayerArenaEvent, listener: KillPlayerArena.(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent) -> Unit) {
+        bukkitKillListeners.computeIfAbsent(event) { mutableListOf() }.add(listener)
+    }
 
     init {
         val pluginManager = plugin.server.pluginManager

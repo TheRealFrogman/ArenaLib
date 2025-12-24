@@ -1,11 +1,11 @@
 package io.github.TheRealFrogman.arenaLib.Core.Lobby.Concrete
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
 import io.github.TheRealFrogman.arenaLib.Core.Lobby.Abstract.LobbyWithTimer
 import org.bukkit.plugin.java.JavaPlugin
 
 class LobbyWithTimerWithoutTeleportLocation(
-    arena: ArenaBase,
+    arena: Arena,
     minPlayers: Int,
     maxPlayers: Int,
     minPlayersToStart: Int,

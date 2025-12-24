@@ -1,7 +1,7 @@
 package io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer
 
 import com.google.common.collect.ImmutableMap
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
 import org.bukkit.GameMode
 import org.bukkit.Location
@@ -20,14 +20,14 @@ data class ArenaPlayer(
     var team: Team? = null
         private set
 
-    var currentArena: ArenaBase? = null
+    var currentArena: Arena? = null
         private set
 
     fun setCurrentTeam(currentTeam: Team?) {
         team = currentTeam
     }
 
-    fun setCurrentArena(currentArena: ArenaBase?) {
+    fun setCurrentArena(currentArena: Arena?) {
         this.currentArena = currentArena
         TODO("Not yet implemented" +
                 "не знаю что я хотел сделать")
@@ -90,6 +90,14 @@ data class ArenaPlayer(
     }
     fun restoreLevel() {
         TODO("Not yet implemented")
+    }
+
+    fun leaveCurrentArena() {
+        if (currentArena == null)
+            return
+
+        currentArena?.removePlayer(this)
+        restoreAll()
     }
 
     fun restoreAll() {

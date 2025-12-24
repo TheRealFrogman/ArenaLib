@@ -1,67 +1,94 @@
 package io.github.TheRealFrogman.arenaLibrary.Arena.ConcreteArenas.DeathmatchArena
 
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
+import io.github.TheRealFrogman.arenaLib.Core.Facets.WinnableFacet
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponentRegistry
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
-import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.PlayerScoreboard
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Round.ROUND_MANAGER_KEY
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Round.Round
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Round.RoundManager
+import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SPAWN_POINT_MANAGER_KEY
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
-import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
-import io.github.TheRealFrogman.arenaLib.Core.Facets.ICasualArena
-import org.bukkit.event.entity.EntityDamageByEntityEvent
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.SCOREBOARD_KEY
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.Scoreboard
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators.SPECTATORS_MANAGER_KEY
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators.SpectatorsManager
+import io.github.TheRealFrogman.arenaLib.Core.Controllers.PlayerController
+import io.github.TheRealFrogman.arenaLib.Core.Facets.CasualFacet
 import org.bukkit.plugin.java.JavaPlugin
 
-class DeathmatchArena internal constructor(
+class DeathmatchArena (
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
     override val maxPlayers: Int,
-    override val minPlayersPerTeam: Int,
-    override val maxPlayersPerTeam: Int,
-    teamsInitializers: MutableList<Team.Initializer>,
+    timeAllottedToBeAssisterMs: Long, // milliseconds
+    componentRegistry: ArenaComponentRegistry,
     plugin: JavaPlugin,
-) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, 5, plugin), ICasualArena {
-
-    //Optional components
-    private val scoreboard = PlayerScoreboard(this)
+) : KillPlayerArena(name, region, spawnPoints, timeAllottedToBeAssisterMs, componentRegistry, plugin),
+    CasualFacet,
+    PlayerController,
+    WinnableFacet {
 
     override val minPlayers = 2
 
-    override fun onBukkitKill(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent) {
-        scoreboard.addScore(metadata.killer, 1)
-        spawnPointManager.spawnWithLeastPlayersAround(metadata.victim)
+    init {
+        componentRegistry.register(SCOREBOARD_KEY, Scoreboard<ArenaPlayer>(this))
+        componentRegistry.register(SPECTATORS_MANAGER_KEY, SpectatorsManager(this))
+        componentRegistry.register(ROUND_MANAGER_KEY, RoundManager(this))
+
+        addListener(KillPlayerArenaEvent.ON_KILL) { metadata, event ->
+
+            componentRegistry.get(SCOREBOARD_KEY)
+                .addScore(metadata.killer, 1)
+
+            componentRegistry.get(SPAWN_POINT_MANAGER_KEY)
+                .spawnWithLeastPlayersAround(metadata.victim)
+
+        }
+
+
+        componentRegistry.get(ROUND_MANAGER_KEY)
+            .getRounds()
+            .forEach { round ->
+                round?.addListener(Round.Event.FINISH) {
+                    players.forEach {
+                        val spawnPointManager = componentRegistry.get(SPAWN_POINT_MANAGER_KEY)
+                        spawnPointManager.spawnAtRandom(it)
+                    }
+                }
+            }
+
+        addListener(ArenaEvent.FINISHED) {
+            val scoreboard = componentRegistry.get(SCOREBOARD_KEY)
+
+            val potentialWinners = scoreboard.getFirstLeading(3)
+
+            val winners = potentialWinners.ifEmpty { listOf() }
+
+            win(winners)
+        }
+
+        val roundsManager = componentRegistry.get(ROUND_MANAGER_KEY)
+
+        roundsManager.lastRound?.addListener(Round.Event.FINISH) {
+            val spectatorsManager = componentRegistry.get(SPECTATORS_MANAGER_KEY)
+
+            players.forEach { spectatorsManager.addSpectator(it) }
+        }
     }
 
-    override fun onStart() {
-        TODO("заспавнить игроков")
-
-        TODO("А ТОЧНЕЕ НАЧАТЬ РАУНДЫ" +
-                "А В НАЧАЛЕ КАЖДОГО РАУНДА СПАВНИТЬ ИГРОКОВ")
-    }
-
-    override fun declareWinners(): List<ArenaPlayer> {
+    override fun join(player: ArenaPlayer) {
         TODO("Not yet implemented")
+        super<CasualFacet>.join(player)
     }
 
-    override fun onWin(winners: List<ArenaPlayer>) {
+    override fun leave(player: ArenaPlayer) {
+        TODO("Not yet implemented")
+        TODO("здесь можно отобразить игроку результат арены на момент выхода")
 
-        TODO("перевести игроков в спектаторы и через время" +
-                "телепортировать игрока туда, где он был до входа на арену. " +
-                "Надо запоминать локацию где-то." +
-                "Запоминаю в классе игрока"
-        )
-
-        TODO("написать желаемые методы ArenaPlayer а потом их релизовать")
-    }
-
-    override fun addPlayer(player: ArenaPlayer) {
-        TODO("Просто добавить игрока в список")
-    }
-
-    override fun removePlayer(player: ArenaPlayer) {
-        super.leave(player)
-    }
-
-    override fun onLeave(arenaPlayer: ArenaPlayer) {
-        TODO("")
+        super<CasualFacet>.leave(player)
     }
 }

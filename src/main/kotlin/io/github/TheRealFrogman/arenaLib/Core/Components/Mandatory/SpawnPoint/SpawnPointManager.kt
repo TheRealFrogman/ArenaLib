@@ -1,15 +1,15 @@
 package io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
-import io.github.TheRealFrogman.arenaLib.Core.Components.ArenaComponent
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponent
 import org.bukkit.Location
 import kotlin.math.sqrt
 
 class SpawnPointManager(
-    arena: ArenaBase,
-    private val spawns: MutableList<SpawnPoint> = ArrayList<SpawnPoint>()
-) : ArenaComponent(arena) {
+    override val arena: Arena,
+    val spawns: MutableList<SpawnPoint>
+) : ArenaComponent {
 
     init {
         require(spawns.all {
@@ -18,6 +18,16 @@ class SpawnPointManager(
         }) { "All spawns should be in arena region" }
 
         require(arena.players.size > spawns.size) { "Max players can't be more than spawn points" }
+    }
+
+    fun spawnManyAtRandom(players: List<ArenaPlayer>) {
+        check(players.size <= spawns.size) { "Too many players" }
+
+        val shuffledSpawns = spawns.shuffled()
+
+        for (i in players.indices) {
+            shuffledSpawns[i].spawnPlayer(players[i])
+        }
     }
 
     fun spawnAtRandom(player: ArenaPlayer) {

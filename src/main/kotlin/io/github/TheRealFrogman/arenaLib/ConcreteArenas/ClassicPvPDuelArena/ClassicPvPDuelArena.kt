@@ -1,59 +1,60 @@
 package io.github.TheRealFrogman.arenaLib.ConcreteArenas.ClassicPvPDuelArena
 
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.ArenaRegion.ArenaRegion
 import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.KillPlayerArena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
+import io.github.TheRealFrogman.arenaLib.Core.Components.Common.ArenaComponentRegistry
 import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.SpawnPoint.SpawnPoint
-import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.PlayerScoreboard
-import io.github.TheRealFrogman.arenaLib.Core.Components.Mandatory.Team.Team
-import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators.Spectators
-import io.github.TheRealFrogman.arenaLib.Core.Facets.ISessionedArena
-import org.bukkit.event.entity.EntityDamageByEntityEvent
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Scoreboard.SCOREBOARD_KEY
+import io.github.TheRealFrogman.arenaLib.Core.Components.Optional.Spectators.SPECTATORS_MANAGER_KEY
+import io.github.TheRealFrogman.arenaLib.Core.Facets.SessionedFacet
+import io.github.TheRealFrogman.arenaLib.Core.Facets.WinnableFacet
 import org.bukkit.plugin.java.JavaPlugin
 
 class ClassicPvPDuelArena (
     name: String,
     region: ArenaRegion,
     spawnPoints: MutableList<SpawnPoint>,
-    teamsInitializers: MutableList<Team.Initializer>,
+    timeAllottedToBeAssisterMs: Long, // milliseconds
+    componentRegistry: ArenaComponentRegistry,
     plugin: JavaPlugin,
-) : KillPlayerArena(name, region, spawnPoints, teamsInitializers, 5, plugin), ISessionedArena {
+) : KillPlayerArena(name, region, spawnPoints,  timeAllottedToBeAssisterMs, componentRegistry, plugin),
+    SessionedFacet,
+    WinnableFacet {
 
     override val maxPlayers = 2
     override val minPlayers = 2
 
-    override val maxPlayersPerTeam = 1
-    override val minPlayersPerTeam = 1
+    init {
+        addListener(KillPlayerArenaEvent.ON_KILL) { metadata, event ->
+            componentRegistry.get(SCOREBOARD_KEY)
+                .addScore(metadata.killer, 1)
 
-    //Optional components
-    private val scoreboard = PlayerScoreboard(this)
-    private val spectators = Spectators(this)
+            componentRegistry.get(SPECTATORS_MANAGER_KEY)
+                .addSpectator(metadata.victim)
 
-    override fun onBukkitKill(metadata: KillMetadata, killingDamageEvent: EntityDamageByEntityEvent) {
-        scoreboard.addScore(metadata.killer, 1)
-        spectators.addSpectator(metadata.victim)
-        //todo в конце раунда заспавнить на одной из точек спавна и сменить gamemode на adventure
-        //todo сделать откат этих состояний как-то, запрограммировать можно где-то
-    }
+            //todo в конце раунда заспавнить на одной из точек спавна и сменить gamemode на adventure с бэкапом
+            // для этого сделать приватный метод потому что я буду делать это много раз
 
-    override fun declareWinners(): List<ArenaPlayer> {
-        return if(scoreboard.leader == null)
-            listOf()
-        else
-            listOf(scoreboard.leader!!)
-    }
 
-    override fun onWin(winners: List<ArenaPlayer>) {
-        TODO("Not yet implemented")
-    }
+            //todo при убийстве сменять раунд на следующий
+            // а точнее когда какая-либо команда вся мертва
+            // можно сделать в кил плеер арене метод который
+            // возвращает булеан в зависимости от того мертвы ли все игроки на арене
+            // в даунтайме всегда убитого добавлять в спектаторы
+            // после даунтайма, то есть в начале следующего раунда убирать из спектаторов
+            // и спавнить на одной из точек спавна своей команды
+        }
 
-    override fun onStart() {
-    }
+        addListener(Arena.ArenaEvent.FINISHED) {
+            val scoreboard = componentRegistry.get(SCOREBOARD_KEY)
 
-    override fun onLeave(arenaPlayer: ArenaPlayer) {
-        TODO("Not yet implemented")
-    }
+            val winners =
+                if(scoreboard.leader == null) listOf()
+                else listOf(scoreboard.leader!!)
 
-    override fun start(players: MutableSet<ArenaPlayer>) {
+            win(winners)
+        }
     }
 }

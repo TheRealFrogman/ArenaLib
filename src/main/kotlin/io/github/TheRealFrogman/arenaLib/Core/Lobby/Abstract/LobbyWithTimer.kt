@@ -1,12 +1,12 @@
 package io.github.TheRealFrogman.arenaLib.Core.Lobby.Abstract
 
-import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.ArenaBase
+import io.github.TheRealFrogman.arenaLib.Core.ArenaBase.Arena
 import io.github.TheRealFrogman.arenaLib.Core.ArenaPlayer.ArenaPlayer
 import io.github.TheRealFrogman.arenaLib.Core.Utilities.Countdown
 import org.bukkit.plugin.java.JavaPlugin
 
 abstract class LobbyWithTimer(
-    arena: ArenaBase,
+    arena: Arena,
     minPlayers: Int,
     maxPlayers: Int,
     private val minPlayersToStart: Int,
